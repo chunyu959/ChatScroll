@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ChatScroll</string>
+    <string name="action_back">Back</string>
+    <string name="action_import">Import Markdown</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_confirm_delete">Delete</string>
+    <string name="list_empty_title">No conversations yet</string>
+    <string name="list_empty_subtitle">Import an exported chat file and read it like a real conversation.</string>
+    <string name="list_import_hint">Tap + to import a Markdown file,\nor share one to ChatScroll from anywhere.</string>
+    <string name="delete_dialog_title">Delete conversation?</string>
+    <string name="delete_dialog_text">“%1$s” will be removed from this device. This cannot be undone.</string>
+    <string name="import_success">Imported</string>
+    <string name="import_failed">Couldn’t read that file</string>
+    <string name="import_empty">No messages found in that file</string>
+    <string name="message_count">%1$d messages</string>
+    <string name="message_count_single">1 message</string>
+    <string name="untitled_conversation">Untitled conversation</string>
+    <string name="import_shared_text">Shared text</string>
+</resources>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">聊卷</string>
+    <string name="action_back">返回</string>
+    <string name="action_import">导入 Markdown</string>
+    <string name="action_delete">删除</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_confirm_delete">删除</string>
+    <string name="list_empty_title">还没有对话</string>
+    <string name="list_empty_subtitle">导入一份导出的聊天记录，像聊天一样阅读它。</string>
+    <string name="list_import_hint">点右下角 + 导入 Markdown 文件，\n也可以把文件直接分享给聊卷。</string>
+    <string name="delete_dialog_title">删除这段对话？</string>
+    <string name="delete_dialog_text">「%1$s」将从本机删除，此操作无法撤销。</string>
+    <string name="import_success">导入成功</string>
+    <string name="import_failed">无法读取该文件</string>
+    <string name="import_empty">文件里没有找到消息</string>
+    <string name="message_count">%1$d 条消息</string>
+    <string name="message_count_single">1 条消息</string>
+    <string name="untitled_conversation">未命名对话</string>
+    <string name="import_shared_text">分享的文字</string>
+</resources>

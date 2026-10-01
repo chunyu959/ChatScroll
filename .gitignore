@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# IDE
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Local environment (contains machine-specific SDK path)
+local.properties
+
+# Signing material — NEVER commit
+keystore/
+keystore.properties
+*.jks
+*.keystore
+
+# Build artifacts
+*.apk
+*.idsig
+
+# OS
+.DS_Store
+Thumbs.db
