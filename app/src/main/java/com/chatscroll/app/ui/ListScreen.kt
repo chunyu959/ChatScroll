@@ -7,17 +7,20 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -41,9 +44,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chatscroll.app.R
-import com.chatscroll.app.data.Conversation
+import com.chatscroll.app.data.ConversationSummary
 import com.chatscroll.app.ui.theme.Ink
 import com.chatscroll.app.ui.theme.InkSoft
+import com.chatscroll.app.ui.theme.Terracotta
 import com.chatscroll.app.ui.theme.WarmBorder
 import java.time.Instant
 import java.time.LocalDateTime
@@ -53,10 +57,10 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListScreen(
-    conversations: List<Conversation>,
-    onOpen: (Conversation) -> Unit,
+    conversations: List<ConversationSummary>,
+    onOpen: (ConversationSummary) -> Unit,
     onImport: () -> Unit,
-    onDeleteRequest: (Conversation) -> Unit
+    onItemAction: (ConversationSummary) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -98,7 +102,7 @@ fun ListScreen(
                     ConversationCard(
                         conversation = conversation,
                         onClick = { onOpen(conversation) },
-                        onLongClick = { onDeleteRequest(conversation) }
+                        onLongClick = { onItemAction(conversation) }
                     )
                 }
             }
@@ -147,7 +151,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConversationCard(
-    conversation: Conversation,
+    conversation: ConversationSummary,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -157,10 +161,10 @@ private fun ConversationCard(
             ZoneId.systemDefault()
         ).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
     }
-    val countText = if (conversation.messages.size == 1) {
+    val countText = if (conversation.messageCount == 1) {
         stringResource(R.string.message_count_single)
     } else {
-        stringResource(R.string.message_count, conversation.messages.size)
+        stringResource(R.string.message_count, conversation.messageCount)
     }
 
     Surface(
@@ -172,16 +176,32 @@ private fun ConversationCard(
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Text(
-                conversation.title,
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp,
-                lineHeight = 22.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                color = Ink
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (conversation.pinned) {
+                    Icon(
+                        Icons.Filled.PushPin,
+                        contentDescription = stringResource(R.string.action_pin),
+                        tint = Terracotta,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(5.dp))
+                }
+                Text(
+                    conversation.title,
+                    fontFamily = FontFamily.Serif,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = Ink,
+                    modifier = Modifier.weight(1f)
+                )
+                if (!conversation.seen) {
+                    Spacer(Modifier.width(8.dp))
+                    NewBadge()
+                }
+            }
             Spacer(Modifier.height(5.dp))
             Text(
                 "$countText · $dateText",
@@ -189,5 +209,22 @@ private fun ConversationCard(
                 color = InkSoft
             )
         }
+    }
+}
+
+/** Small "new" tag shown until a conversation has been opened once. */
+@Composable
+private fun NewBadge() {
+    Surface(
+        color = Terracotta,
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Text(
+            stringResource(R.string.badge_new),
+            color = Color.White,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
     }
 }

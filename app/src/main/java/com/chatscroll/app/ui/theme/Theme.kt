@@ -5,7 +5,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// Claude-inspired warm light palette
+// Warm light palette: ivory background with a terracotta accent
 val Ivory = Color(0xFFFAF9F5)          // app background
 val Ink = Color(0xFF1F1E1D)            // primary text
 val InkSoft = Color(0xFF757168)        // secondary text

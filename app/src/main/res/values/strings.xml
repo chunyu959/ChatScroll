@@ -4,8 +4,13 @@
     <string name="action_back">Back</string>
     <string name="action_import">Import Markdown</string>
     <string name="action_delete">Delete</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_pin">Pin to top</string>
+    <string name="action_unpin">Unpin</string>
+    <string name="action_save">Save</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_confirm_delete">Delete</string>
+    <string name="rename_dialog_title">Rename conversation</string>
     <string name="list_empty_title">No conversations yet</string>
     <string name="list_empty_subtitle">Import an exported chat file and read it like a real conversation.</string>
     <string name="list_import_hint">Tap + to import a Markdown file,\nor share one to ChatScroll from anywhere.</string>
@@ -18,4 +23,12 @@
     <string name="message_count_single">1 message</string>
     <string name="untitled_conversation">Untitled conversation</string>
     <string name="import_shared_text">Shared text</string>
+    <string name="thinking_label">Thought process</string>
+    <string name="tool_label">Used %1$s</string>
+    <string name="tool_label_generic">Used a tool</string>
+    <string name="badge_new">New</string>
+    <string name="duplicate_dialog_title">Already imported</string>
+    <string name="duplicate_dialog_text">This conversation is identical to “%1$s”, which is already in your library.</string>
+    <string name="duplicate_open_existing">Open existing</string>
+    <string name="duplicate_import_anyway">Import anyway</string>
 </resources>

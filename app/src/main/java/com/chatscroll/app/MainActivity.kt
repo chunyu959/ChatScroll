@@ -39,6 +39,11 @@ class MainActivity : ComponentActivity() {
             ?: intent.getStringExtra(Intent.EXTRA_TEXT)?.let { ImportPayload.RawText(it) }
         if (payload != null) {
             AppState.pendingImport.value = payload
+            // The same intent is delivered again on the next onCreate (rotation,
+            // process restore). Clear it so one share cannot import twice.
+            intent.removeExtra(Intent.EXTRA_STREAM)
+            intent.removeExtra(Intent.EXTRA_TEXT)
+            intent.action = null
         }
     }
 }

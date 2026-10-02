@@ -4,8 +4,13 @@
     <string name="action_back">返回</string>
     <string name="action_import">导入 Markdown</string>
     <string name="action_delete">删除</string>
+    <string name="action_rename">重命名</string>
+    <string name="action_pin">置顶</string>
+    <string name="action_unpin">取消置顶</string>
+    <string name="action_save">保存</string>
     <string name="action_cancel">取消</string>
     <string name="action_confirm_delete">删除</string>
+    <string name="rename_dialog_title">重命名对话</string>
     <string name="list_empty_title">还没有对话</string>
     <string name="list_empty_subtitle">导入一份导出的聊天记录，像聊天一样阅读它。</string>
     <string name="list_import_hint">点右下角 + 导入 Markdown 文件，\n也可以把文件直接分享给聊卷。</string>
@@ -18,4 +23,12 @@
     <string name="message_count_single">1 条消息</string>
     <string name="untitled_conversation">未命名对话</string>
     <string name="import_shared_text">分享的文字</string>
+    <string name="thinking_label">思考过程</string>
+    <string name="tool_label">使用了 %1$s</string>
+    <string name="tool_label_generic">使用了工具</string>
+    <string name="badge_new">新</string>
+    <string name="duplicate_dialog_title">已经导入过</string>
+    <string name="duplicate_dialog_text">这段对话和已保存的「%1$s」内容完全一样。</string>
+    <string name="duplicate_open_existing">打开原来的</string>
+    <string name="duplicate_import_anyway">仍然导入</string>
 </resources>
