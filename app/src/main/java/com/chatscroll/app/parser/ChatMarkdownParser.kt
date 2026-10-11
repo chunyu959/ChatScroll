@@ -57,7 +57,11 @@ object ChatMarkdownParser {
         val images: List<String> = emptyList(),
         // Reasoning and tool calls in the order they happened, so a reply that
         // thinks, calls a tool, then thinks again keeps that sequence.
-        val blocks: List<Block> = emptyList()
+        val blocks: List<Block> = emptyList(),
+        // Who wrote the message and when, for exports that record both. Null for
+        // exports that only mark a role, so their bubbles stay exactly as they are.
+        val speaker: String? = null,
+        val time: String? = null
     )
 
     data class Result(val title: String?, val messages: List<Message>)
@@ -79,6 +83,10 @@ object ChatMarkdownParser {
     private val rawBase64Regex = Regex("[A-Za-z0-9+/=]+")
 
     fun parse(content: String): Result {
+        // A Kelivo export marks each turn with a time and a name instead of a role
+        // header. The two never look alike, so the format is decided from the file.
+        if (KelivoParser.isKelivo(content)) return KelivoParser.parse(content)
+
         var title: String? = null
         var role: Role? = null
         val buffer = StringBuilder()

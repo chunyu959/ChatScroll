@@ -56,6 +56,7 @@ Sure! Here's what I found…
 ```
 
 - ✅ Supports the [RikkaHub](https://github.com/rikkahub/rikkahub) export format (`**User**:` / `**Assistant**:` headers, including exported reasoning and embedded images)
+- ✅ Supports the [Kelivo](https://github.com/Chevey339/kelivo) export format (each message carries a time and a speaker; reasoning and tool calls are folded by default)
 - ✅ Any other Markdown file — opens as a single readable document
 - 🔜 More formats coming soon
 

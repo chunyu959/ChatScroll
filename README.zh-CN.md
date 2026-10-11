@@ -55,6 +55,7 @@ ChatScroll 识别使用 `User` / `Assistant` 角色标记的聊天记录导出�
 ```
 
 - ✅ 支持 [RikkaHub](https://github.com/rikkahub/rikkahub) 导出格式（`**User**:` / `**Assistant**:` 角色标记，含导出的推理过程和内嵌图片）
+- ✅ 支持 [Kelivo](https://github.com/Chevey339/kelivo) 导出格式（每条消息带时间和发言人，思考过程与工具调用默认折叠）
 - ✅ 其他任意 Markdown 文件——作为单个文档打开阅读
 - 🔜 更多格式敬请期待
 

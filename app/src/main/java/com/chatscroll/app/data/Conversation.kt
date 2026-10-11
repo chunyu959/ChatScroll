@@ -20,6 +20,10 @@ data class ChatMessage(
     val role: String,   // "user" | "assistant"
     val content: String,
     val thinking: String? = null,
+    // Who wrote the message and when, when the export recorded both. Empty for
+    // conversations imported before this was kept, and for exports with no names.
+    val speaker: String? = null,
+    val time: String? = null,
     // Reasoning and tool calls, in order. Empty for conversations imported
     // before this was recorded; those still use [thinking].
     val blocks: List<MessageBlock> = emptyList(),
@@ -47,6 +51,13 @@ data class Conversation(
     val pinnedAt: Long? = null,
     val seen: Boolean = true,
     val contentHash: String = "",
+    // Which message was at the top of the screen when reading stopped, and how many
+    // pixels into that message. Both are known exactly, unlike a pixel distance,
+    // which has to guess the height of messages that are not on screen. Null until
+    // the conversation has been opened from the list once, so a fresh import always
+    // starts at the top.
+    val scrollIndex: Int? = null,
+    val scrollOffset: Int? = null,
     val messages: List<ChatMessage>
 )
 
@@ -64,7 +75,15 @@ data class ConversationSummary(
     val pinnedAt: Long? = null,
     val seen: Boolean = true,
     val contentHash: String = "",
-    val messageCount: Int = 0
+    val messageCount: Int = 0,
+    val scrollIndex: Int? = null,
+    val scrollOffset: Int? = null
+)
+
+/** One conversation a search matched, with a short quote from its text when it matched there. */
+data class SearchHit(
+    val summary: ConversationSummary,
+    val snippet: String?
 )
 
 /**
@@ -142,6 +161,49 @@ object ConversationStore {
         File(folder, "$id.meta.json").delete()
     }
 
+    /**
+     * Conversations whose title or message text contains [query], read one file at a
+     * time so a long list is never held in memory all at once.
+     *
+     * Only the visible text counts: the title and what was said. Folded reasoning and
+     * tool calls are skipped, since a match inside them could not be shown.
+     */
+    fun search(context: Context, query: String): List<SearchHit> {
+        val needle = query.trim()
+        if (needle.isEmpty()) return emptyList()
+        migrateLegacy(context)
+        val hits = ArrayList<SearchHit>()
+        dir(context).listFiles { f -> f.isFile && f.name.endsWith(".meta.json") }
+            ?.forEach { file ->
+                val summary = runCatching {
+                    json.decodeFromString<ConversationSummary>(file.readText())
+                }.getOrNull() ?: return@forEach
+                val titleMatch = summary.title.contains(needle, ignoreCase = true)
+                val conversation = load(context, summary.id) ?: return@forEach
+                val snippet = conversation.messages.firstNotNullOfOrNull { message ->
+                    excerpt(message.content, needle)
+                }
+                if (titleMatch || snippet != null) {
+                    hits.add(SearchHit(summary, snippet))
+                }
+            }
+        return hits.sortedWith(
+            compareByDescending<SearchHit> { it.summary.pinned }
+                .thenByDescending { it.summary.pinnedAt ?: 0L }
+                .thenByDescending { it.summary.importedAt }
+        )
+    }
+
+    /** A short window of [content] around the first match of [needle], or null. */
+    internal fun excerpt(content: String, needle: String): String? {
+        val at = content.indexOf(needle, ignoreCase = true)
+        if (at < 0) return null
+        val start = (at - 20).coerceAtLeast(0)
+        val end = (at + needle.length + 20).coerceAtMost(content.length)
+        val core = content.substring(start, end).replace('\n', ' ').trim()
+        return (if (start > 0) "…" else "") + core + (if (end < content.length) "…" else "")
+    }
+
     /** Fingerprint of the messages. The title is deliberately not part of it. */
     fun contentHash(messages: List<ChatMessage>): String {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -182,5 +244,7 @@ private fun Conversation.toSummary() = ConversationSummary(
     pinnedAt = pinnedAt,
     seen = seen,
     contentHash = contentHash,
-    messageCount = messages.size
+    messageCount = messages.size,
+    scrollIndex = scrollIndex,
+    scrollOffset = scrollOffset
 )

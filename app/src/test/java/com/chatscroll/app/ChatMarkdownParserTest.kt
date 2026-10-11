@@ -294,6 +294,34 @@ class ChatMarkdownParserTest {
     }
 
     @Test
+    fun keepsLatexDelimitersForTheRenderer() {
+        // The renderer understands \( \) and \[ \] directly, so the parser must
+        // not rewrite them into dollar signs, which would show up as text.
+        val md = """
+            **Assistant**:
+
+            欧拉公式：
+
+            \[
+            e^{i\pi}+1=0
+            \]
+
+            行内 \(a^2+b^2=c^2\) 结束。
+
+            这是普通的 [文字] 和 [链接](https://example.com)。
+        """.trimIndent()
+
+        val content = ChatMarkdownParser.parse(md).messages[0].content
+
+        assertTrue(content.contains("\\["))
+        assertTrue(content.contains("\\]"))
+        assertTrue(content.contains("\\(a^2+b^2=c^2\\)"))
+        assertTrue(!content.contains("$"))
+        assertTrue(content.contains("[文字]"))
+        assertTrue(content.contains("[链接](https://example.com)"))
+    }
+
+    @Test
     fun leavesRegularLinksAndImagesUntouched() {
         val md = """
             **Assistant**:

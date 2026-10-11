@@ -19,24 +19,39 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -52,35 +67,163 @@ import androidx.compose.ui.unit.sp
 import com.chatscroll.app.R
 import com.chatscroll.app.data.ChatMessage
 import com.chatscroll.app.data.Conversation
+import com.chatscroll.app.ui.theme.Ink
 import com.chatscroll.app.ui.theme.InkSoft
 import com.chatscroll.app.ui.theme.Terracotta
 import com.chatscroll.app.ui.theme.UserBubble
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen(conversation: Conversation, onBack: () -> Unit) {
-    BackHandler(onBack = onBack)
+fun ChatScreen(
+    conversation: Conversation,
+    rememberPosition: Boolean,
+    rememberSeconds: Int,
+    onBack: () -> Unit,
+    onScroll: (index: Int, offset: Int) -> Unit
+) {
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    var searching by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var matchCursor by rememberSaveable { mutableIntStateOf(0) }
+
+    // Only the visible text is searchable; folded reasoning and tool calls are not.
+    val matches = remember(conversation, query) {
+        val needle = query.trim()
+        if (needle.isEmpty()) emptyList()
+        else conversation.messages.mapIndexedNotNull { index, message ->
+            if (message.content.contains(needle, ignoreCase = true)) index else null
+        }
+    }
+
+    // A conversation opened before it was ever read has no saved place, so it
+    // starts at the top. Once it has been read, reopen it on the same message and
+    // the same distance into that message. Both are known exactly, so nothing has
+    // to be guessed from the height of messages that are off screen.
+    val savedIndex = conversation.scrollIndex
+    val savedOffset = conversation.scrollOffset
+    LaunchedEffect(conversation.id) {
+        if (savedIndex == null || savedIndex <= 0 && (savedOffset ?: 0) <= 0) return@LaunchedEffect
+        listState.scrollToItem(savedIndex, savedOffset ?: 0)
+    }
+
+    // Where reading has reached: the first message on screen and how far into it.
+    // Written on a timer so it survives the app being swiped away, which gives no
+    // chance to save, and written again on leaving so coming straight back shows
+    // the exact spot rather than the last tick.
+    var pendingIndex by remember { mutableStateOf<Int?>(null) }
+    var pendingOffset by remember { mutableStateOf(0) }
+    if (rememberPosition) {
+        LaunchedEffect(listState) {
+            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                .distinctUntilChanged()
+                .collect { (index, offset) ->
+                    pendingIndex = index
+                    pendingOffset = offset
+                }
+        }
+        LaunchedEffect(rememberSeconds) {
+            while (isActive) {
+                delay(rememberSeconds * 1000L)
+                pendingIndex?.let { onScroll(it, pendingOffset) }
+            }
+        }
+    }
+    DisposableEffect(conversation.id) {
+        onDispose {
+            if (rememberPosition) pendingIndex?.let { onScroll(it, pendingOffset) }
+        }
+    }
+
+    val awayFromTop by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
+    }
+
+    BackHandler(enabled = searching) {
+        searching = false
+        query = ""
+    }
+    BackHandler(enabled = !searching) {
+        if (rememberPosition) pendingIndex?.let { onScroll(it, pendingOffset) }
+        onBack()
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        conversation.title,
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    if (searching) {
+                        TextField(
+                            value = query,
+                            onValueChange = {
+                                query = it
+                                matchCursor = 0
+                            },
+                            placeholder = { Text(stringResource(R.string.search_hint_chat)) },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Text(
+                            conversation.title,
+                            fontFamily = FontFamily.Serif,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back)
-                        )
+                    if (!searching) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.action_back)
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    if (searching) {
+                        if (matches.isNotEmpty()) {
+                            Text(
+                                stringResource(R.string.search_count, matchCursor + 1, matches.size),
+                                color = InkSoft,
+                                fontSize = 13.sp
+                            )
+                            IconButton(onClick = {
+                                matchCursor = (matchCursor - 1 + matches.size) % matches.size
+                            }) {
+                                Icon(Icons.Filled.KeyboardArrowUp, contentDescription = null, tint = Ink)
+                            }
+                            IconButton(onClick = {
+                                matchCursor = (matchCursor + 1) % matches.size
+                            }) {
+                                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = Ink)
+                            }
+                        }
+                        IconButton(onClick = {
+                            searching = false
+                            query = ""
+                        }) {
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_cancel))
+                        }
+                    } else {
+                        IconButton(onClick = { searching = true }) {
+                            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.action_search))
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -88,9 +231,26 @@ fun ChatScreen(conversation: Conversation, onBack: () -> Unit) {
                 )
             )
         },
+        floatingActionButton = {
+            if (awayFromTop && !searching) {
+                FloatingActionButton(
+                    onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                    containerColor = Color.White,
+                    contentColor = Terracotta
+                ) {
+                    Icon(Icons.Filled.KeyboardArrowUp, contentDescription = stringResource(R.string.action_scroll_top))
+                }
+            }
+        },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
+        // Jump to the current match whenever it changes.
+        LaunchedEffect(matches, matchCursor) {
+            matches.getOrNull(matchCursor)?.let { listState.animateScrollToItem(it) }
+        }
+
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
@@ -119,16 +279,19 @@ fun ChatScreen(conversation: Conversation, onBack: () -> Unit) {
 @Composable
 private fun UserMessage(message: ChatMessage) {
     val bubbleMaxWidth = LocalConfiguration.current.screenWidthDp.dp * 0.84f
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-        Surface(
-            color = UserBubble,
-            shape = RoundedCornerShape(
-                topStart = 20.dp, topEnd = 20.dp,
-                bottomStart = 20.dp, bottomEnd = 4.dp
-            ),
-            modifier = Modifier.widthIn(max = bubbleMaxWidth)
-        ) {
-            MessageBody(message, Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+        SpeakerLine(message, Alignment.End)
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+            Surface(
+                color = UserBubble,
+                shape = RoundedCornerShape(
+                    topStart = 20.dp, topEnd = 20.dp,
+                    bottomStart = 20.dp, bottomEnd = 4.dp
+                ),
+                modifier = Modifier.widthIn(max = bubbleMaxWidth)
+            ) {
+                MessageBody(message, Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
+            }
         }
     }
 }
@@ -137,6 +300,7 @@ private fun UserMessage(message: ChatMessage) {
 @Composable
 private fun AssistantMessage(message: ChatMessage) {
     Column(Modifier.fillMaxWidth()) {
+        SpeakerLine(message, Alignment.Start)
         message.blocks.forEach { block ->
             when (block.kind) {
                 "tool" -> ToolBlock(block.name, block.text)
@@ -151,6 +315,30 @@ private fun AssistantMessage(message: ChatMessage) {
         }
         if (message.content.isNotBlank() || message.images.isNotEmpty()) {
             MessageBody(message)
+        }
+    }
+}
+
+/**
+ * The name and time of a message, shown above its bubble and aligned with it.
+ * Exports that record neither say nothing here, so their layout is unchanged.
+ */
+@Composable
+private fun SpeakerLine(message: ChatMessage, alignment: Alignment.Horizontal) {
+    val name = message.speaker
+    val time = message.time
+    if (name.isNullOrBlank() && time.isNullOrBlank()) return
+    Row(
+        Modifier.fillMaxWidth().padding(bottom = 4.dp),
+        horizontalArrangement = if (alignment == Alignment.End) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (!name.isNullOrBlank()) {
+            Text(name, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        }
+        if (!name.isNullOrBlank() && !time.isNullOrBlank()) Spacer(Modifier.width(8.dp))
+        if (!time.isNullOrBlank()) {
+            Text(time, color = InkSoft, fontSize = 12.sp)
         }
     }
 }

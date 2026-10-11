@@ -31,4 +31,18 @@
     <string name="duplicate_dialog_text">This conversation is identical to “%1$s”, which is already in your library.</string>
     <string name="duplicate_open_existing">Open existing</string>
     <string name="duplicate_import_anyway">Import anyway</string>
+    <string name="action_search">Search</string>
+    <string name="search_hint">Search conversations</string>
+    <string name="search_hint_chat">Search this conversation</string>
+    <string name="search_empty">No matches</string>
+    <string name="search_title_match">Matched in the title</string>
+    <string name="action_scroll_top">Back to top</string>
+    <string name="search_count">%1$d of %2$d</string>
+    <string name="action_settings">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_remember">Remember reading position</string>
+    <string name="settings_remember_desc">Saves where you stopped every so often, and reopens there next time. If the app is swiped away, it returns to the last saved spot.</string>
+    <string name="settings_frequency">Save interval</string>
+    <string name="settings_frequency_desc">Recommended 3 seconds, 1 second minimum.</string>
+    <string name="settings_seconds_unit">sec</string>
 </resources>

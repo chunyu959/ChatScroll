@@ -25,8 +25,8 @@ android {
         applicationId = "com.chatscroll.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     signingConfigs {
@@ -84,6 +84,7 @@ dependencies {
     implementation("io.noties.markwon:image:$markwon")
     implementation("io.noties.markwon:html:$markwon")
     implementation("io.noties.markwon:ext-latex:$markwon")
+    implementation("io.noties.markwon:inline-parser:$markwon")
     implementation("io.noties.markwon:ext-tables:$markwon")
     implementation("io.noties.markwon:ext-strikethrough:$markwon")
     implementation("io.noties.markwon:ext-tasklist:$markwon")

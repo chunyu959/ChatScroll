@@ -20,7 +20,11 @@ import io.noties.markwon.AbstractMarkwonPlugin
 import io.noties.markwon.Markwon
 import io.noties.markwon.core.CorePlugin
 import io.noties.markwon.core.MarkwonTheme
+import io.noties.markwon.ext.latex.JLatexMathNode
 import io.noties.markwon.ext.latex.JLatexMathPlugin
+import io.noties.markwon.inlineparser.InlineProcessor
+import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin
+import java.util.regex.Pattern
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
 import io.noties.markwon.ext.tables.TableTheme
@@ -86,9 +90,27 @@ object ChatMarkwon {
                     Prism4jThemeDefault.create()
                 )
             )
-            .usePlugin(
-                JLatexMathPlugin.create(16f * density)
-            )
+            // The first processor to match a backslash wins. The built-in one treats
+            // `\` as an escape, which strips it from `\(...\)` and leaves the formula
+            // as plain text, so the \(...\) reader goes in before the defaults.
+            // factoryBuilder() loads the defaults immediately, so it is built by hand.
+            .usePlugin(MarkwonInlineParserPlugin.create(
+                io.noties.markwon.inlineparser.MarkwonInlineParser.factoryBuilderNoDefaults()
+                    .apply {
+                        addInlineProcessor(ParenMathProcessor())
+                        includeDefaults()
+                    }
+            ))
+            .usePlugin(JLatexMathPlugin.create(16f * density) { builder ->
+                builder.inlinesEnabled(true)
+            })
+            .usePlugin(object : AbstractMarkwonPlugin() {
+                override fun configure(registry: io.noties.markwon.MarkwonPlugin.Registry) {
+                    registry.require(MarkwonInlineParserPlugin::class.java)
+                        .factoryBuilder()
+                        .addInlineProcessor(ParenMathProcessor())
+                }
+            })
             .usePlugin(object : AbstractMarkwonPlugin() {
                 override fun configureSpansFactory(builder: io.noties.markwon.MarkwonSpansFactory.Builder) {
                     // Until an image has actually loaded, draw nothing. The default
@@ -151,6 +173,49 @@ private class BoundedImageDecoder(
     }
 }
 
+/**
+ * Rewrites a display formula into the one shape the renderer treats as math.
+ *
+ * A `$$` pair on its own line becomes a display formula. Nothing else does: `$...$`
+ * and `$$...$$` inside a sentence both come out as plain text, which is why swapping
+ * an inline formula for dollars only printed the dollars. So this rewrites just the
+ * display form, a `\[...\]` block on its own lines, and leaves inline math to
+ * [ParenMathProcessor].
+ *
+ * Only a matched pair is rewritten, and the formula between them is copied verbatim,
+ * so a price like $5, an unmatched bracket, and the backslash commands inside a
+ * formula are never touched.
+ */
+private val displayMath = Regex("""(?m)^[ \t]*\\\[(.*?)\\\][ \t]*$""", RegexOption.DOT_MATCHES_ALL)
+
+fun normalizeMathDelimiters(markdown: String): String {
+    if (!markdown.contains("\\[")) return markdown
+    return displayMath.replace(markdown) { match ->
+        "$$\n" + match.groupValues[1].trim() + "\n$$"
+    }
+}
+
+/**
+ * Reads inline math written as `\(...\)`, which is how exports write it.
+ *
+ * The renderer has no inline dollar syntax, so this produces the formula node
+ * directly. It has to run before the built-in backslash handler: that handler
+ * treats a backslash as an escape and would otherwise drop it, leaving `(ax^2...)`
+ * as plain text. It only matches a complete pair, so a stray `\(` is left alone.
+ */
+private class ParenMathProcessor : InlineProcessor() {
+    override fun specialCharacter(): Char = '\\'
+
+    override fun parse(): org.commonmark.node.Node? {
+        val matched = match(PAREN_MATH) ?: return null
+        return JLatexMathNode().apply { latex(matched.substring(2, matched.length - 2)) }
+    }
+
+    companion object {
+        private val PAREN_MATH: Pattern = Pattern.compile("\\\\\\((.+?)\\\\\\)")
+    }
+}
+
 /** Matches the `[image:N]` markers the parser leaves where an image was removed. */
 val imageMarker = Regex("""\[image:(\d+)]""")
 
@@ -192,7 +257,7 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
                 textSize = 16f
             }
         },
-        update = { markwon.setMarkdown(it, markdown) },
+        update = { markwon.setMarkdown(it, normalizeMathDelimiters(markdown)) },
         modifier = modifier.fillMaxWidth()
     )
 }

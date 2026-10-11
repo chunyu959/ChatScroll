@@ -4,7 +4,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,18 +22,28 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chatscroll.app.R
 import com.chatscroll.app.data.ConversationSummary
+import com.chatscroll.app.data.SearchHit
 import com.chatscroll.app.ui.theme.Ink
 import com.chatscroll.app.ui.theme.InkSoft
 import com.chatscroll.app.ui.theme.Terracotta
@@ -58,19 +71,59 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ListScreen(
     conversations: List<ConversationSummary>,
+    searchHits: List<SearchHit>?,
     onOpen: (ConversationSummary) -> Unit,
     onImport: () -> Unit,
-    onItemAction: (ConversationSummary) -> Unit
+    onItemAction: (ConversationSummary) -> Unit,
+    onQueryChange: (String) -> Unit,
+    onSettings: () -> Unit
 ) {
+    var searching by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        stringResource(R.string.app_name),
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    if (searching) {
+                        TextField(
+                            value = query,
+                            onValueChange = {
+                                query = it
+                                onQueryChange(it)
+                            },
+                            placeholder = { Text(stringResource(R.string.search_hint)) },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Text(
+                            stringResource(R.string.app_name),
+                            fontFamily = FontFamily.Serif,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                },
+                actions = {
+                    if (searching) {
+                        IconButton(onClick = {
+                            searching = false
+                            query = ""
+                            onQueryChange("")
+                        }) {
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_cancel))
+                        }
+                    } else {
+                        IconButton(onClick = { searching = true }) {
+                            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.action_search))
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
@@ -88,7 +141,10 @@ fun ListScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        if (conversations.isEmpty()) {
+        Box(Modifier.fillMaxSize()) {
+        if (searching && query.isNotBlank()) {
+            SearchResults(searchHits, onOpen, Modifier.padding(padding))
+        } else if (conversations.isEmpty()) {
             EmptyState(Modifier.padding(padding))
         } else {
             LazyColumn(
@@ -106,6 +162,72 @@ fun ListScreen(
                     )
                 }
             }
+        }
+            SmallFloatingActionButton(
+                onClick = onSettings,
+                containerColor = Color.White,
+                contentColor = Terracotta,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 16.dp)
+            ) {
+                Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.action_settings))
+            }
+        }
+    }
+}
+
+/** Matches across every conversation, shown in place of the list while searching. */
+@Composable
+private fun SearchResults(
+    hits: List<SearchHit>?,
+    onOpen: (ConversationSummary) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (hits == null) return
+    if (hits.isEmpty()) {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(stringResource(R.string.search_empty), color = InkSoft, fontSize = 14.sp)
+        }
+        return
+    }
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(hits, key = { it.summary.id }) { hit ->
+            SearchHitCard(hit, onClick = { onOpen(hit.summary) })
+        }
+    }
+}
+
+@Composable
+private fun SearchHitCard(hit: SearchHit, onClick: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, WarmBorder),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Text(
+                hit.summary.title,
+                fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = Ink
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                hit.snippet ?: stringResource(R.string.search_title_match),
+                fontSize = 13.sp,
+                color = InkSoft,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

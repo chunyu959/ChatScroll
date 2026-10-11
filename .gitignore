@@ -23,6 +23,9 @@ keystore.properties
 *.apk
 *.idsig
 
+# Private maintenance notes (the public README is README.md / README.zh-CN.md)
+项目总结.md
+
 # OS
 .DS_Store
 Thumbs.db

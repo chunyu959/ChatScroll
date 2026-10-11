@@ -31,4 +31,18 @@
     <string name="duplicate_dialog_text">这段对话和已保存的「%1$s」内容完全一样。</string>
     <string name="duplicate_open_existing">打开原来的</string>
     <string name="duplicate_import_anyway">仍然导入</string>
+    <string name="action_search">搜索</string>
+    <string name="search_hint">搜索全部对话</string>
+    <string name="search_hint_chat">搜索这段对话</string>
+    <string name="search_empty">没有找到</string>
+    <string name="search_title_match">标题匹配</string>
+    <string name="action_scroll_top">回到顶部</string>
+    <string name="search_count">%1$d / %2$d</string>
+    <string name="action_settings">设置</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_remember">记住阅读位置</string>
+    <string name="settings_remember_desc">每隔一段时间记下你读到的位置，下次打开自动回到那里。如果应用被直接划掉，会回到上一次记录的位置。</string>
+    <string name="settings_frequency">记忆频率</string>
+    <string name="settings_frequency_desc">推荐 3 秒，最短 1 秒。</string>
+    <string name="settings_seconds_unit">秒</string>
 </resources>

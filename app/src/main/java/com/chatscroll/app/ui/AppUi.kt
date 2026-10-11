@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -27,9 +28,13 @@ import com.chatscroll.app.data.Conversation
 import com.chatscroll.app.data.MessageBlock
 import com.chatscroll.app.data.ConversationStore
 import com.chatscroll.app.data.ConversationSummary
+import com.chatscroll.app.data.SearchHit
+import com.chatscroll.app.data.Settings
 import com.chatscroll.app.parser.ChatMarkdownParser
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 sealed interface ImportPayload {
@@ -73,6 +78,8 @@ private suspend fun importPayload(context: Context, payload: ImportPayload): Imp
                 role = if (it.role == ChatMarkdownParser.Role.USER) "user" else "assistant",
                 content = it.content,
                 thinking = it.thinking,
+                speaker = it.speaker,
+                time = it.time,
                 blocks = it.blocks.map { block ->
                     MessageBlock(kind = block.kind, text = block.text, name = block.name)
                 },
@@ -120,6 +127,11 @@ fun Root() {
     var deleteTarget by remember { mutableStateOf<ConversationSummary?>(null) }
     var renameTarget by remember { mutableStateOf<ConversationSummary?>(null) }
     var duplicate by remember { mutableStateOf<ImportOutcome.Duplicate?>(null) }
+    var searchHits by remember { mutableStateOf<List<SearchHit>?>(null) }
+    val scope = rememberCoroutineScope()
+    var searchJob by remember { mutableStateOf<Job?>(null) }
+    var rememberPosition by remember { mutableStateOf(Settings.rememberPosition(context)) }
+    var rememberSeconds by remember { mutableStateOf(Settings.rememberSeconds(context)) }
 
     fun refresh() {
         conversations.clear()
@@ -184,11 +196,55 @@ fun Root() {
     }
 
     val current = opened
-    if (screen == "chat" && current != null) {
-        ChatScreen(conversation = current, onBack = { screen = "list" })
+    if (screen == "settings") {
+        SettingsScreen(
+            rememberPosition = rememberPosition,
+            rememberSeconds = rememberSeconds,
+            onRememberChange = { enabled ->
+                rememberPosition = enabled
+                Settings.setRememberPosition(context, enabled)
+            },
+            onSecondsChange = { seconds ->
+                rememberSeconds = seconds.coerceAtLeast(Settings.MIN_SECONDS)
+                Settings.setRememberSeconds(context, rememberSeconds)
+            },
+            onBack = { screen = "list" }
+        )
+    } else if (screen == "chat" && current != null) {
+        ChatScreen(
+            conversation = current,
+            rememberPosition = rememberPosition && current.seen,
+            rememberSeconds = rememberSeconds,
+            onBack = { screen = "list" },
+            onScroll = { index, offset ->
+                val shown = opened ?: return@ChatScreen
+                if (shown.scrollIndex == index && shown.scrollOffset == offset) return@ChatScreen
+                val updated = shown.copy(scrollIndex = index, scrollOffset = offset)
+                opened = updated
+                // Only the summary file changes. The list keeps its own copy, so it
+                // has to be told too, or reopening before a restart shows the old spot.
+                ConversationStore.updateSummary(context, updated.toSummary())
+                val index = conversations.indexOfFirst { it.id == shown.id }
+                if (index >= 0) conversations[index] = updated.toSummary()
+            }
+        )
     } else {
         ListScreen(
             conversations = conversations.toList(),
+            searchHits = searchHits,
+            onQueryChange = { query ->
+                searchJob?.cancel()
+                if (query.isBlank()) {
+                    searchHits = null
+                } else {
+                    searchHits = null
+                    searchJob = scope.launch {
+                        searchHits = withContext(Dispatchers.IO) {
+                            ConversationStore.search(context, query)
+                        }
+                    }
+                }
+            },
             onOpen = { summary ->
                 val conversation = ConversationStore.load(context, summary.id)
                 if (conversation != null) {
@@ -198,7 +254,9 @@ fun Root() {
                         conversation.copy(
                             title = summary.title,
                             pinned = summary.pinned,
-                            pinnedAt = summary.pinnedAt
+                            pinnedAt = summary.pinnedAt,
+                            scrollIndex = summary.scrollIndex,
+                            scrollOffset = summary.scrollOffset
                         ),
                         markSeen = true
                     )
@@ -212,7 +270,8 @@ fun Root() {
                     arrayOf("text/markdown", "text/plain", "application/octet-stream")
                 )
             },
-            onItemAction = { actionTarget = it }
+            onItemAction = { actionTarget = it },
+            onSettings = { screen = "settings" }
         )
     }
 
@@ -320,5 +379,7 @@ private fun Conversation.toSummary() = ConversationSummary(
     pinnedAt = pinnedAt,
     seen = seen,
     contentHash = contentHash,
-    messageCount = messages.size
+    messageCount = messages.size,
+    scrollIndex = scrollIndex,
+    scrollOffset = scrollOffset
 )
