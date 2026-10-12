@@ -95,12 +95,12 @@ class ChatMarkdownParserTest {
         assertEquals(1, result.messages.size)
         val message = result.messages[0]
         assertEquals(ChatMarkdownParser.Role.ASSISTANT, message.role)
-        assertEquals(1, message.blocks.size)
-        assertEquals("thinking", message.blocks[0].kind)
+        assertEquals(listOf("thinking", "text"), message.blocks.map { it.kind })
         assertEquals(
             "Let me analyze this step by step.\nFirst, we consider the options.",
             message.blocks[0].text
         )
+        assertEquals("Here is my final answer.", message.blocks[1].text)
         assertEquals("Here is my final answer.", message.content)
     }
 
@@ -127,7 +127,7 @@ class ChatMarkdownParserTest {
         val result = ChatMarkdownParser.parse(md)
 
         val message = result.messages[0]
-        assertEquals(3, message.blocks.size)
+        assertEquals(4, message.blocks.size)
         assertEquals("thinking", message.blocks[0].kind)
         assertEquals("First thought.", message.blocks[0].text)
         assertEquals("tool", message.blocks[1].kind)
@@ -135,6 +135,8 @@ class ChatMarkdownParserTest {
         assertTrue(message.blocks[1].text.contains("memory_tool_0"))
         assertEquals("thinking", message.blocks[2].kind)
         assertEquals("Second thought, after the tool.", message.blocks[2].text)
+        assertEquals("text", message.blocks[3].kind)
+        assertEquals("The actual reply.", message.blocks[3].text)
         assertEquals("The actual reply.", message.content.trim())
         assertTrue(!message.content.contains("**Tool**"))
     }

@@ -40,9 +40,15 @@ object ChatMarkdownParser {
 
     enum class Role { USER, ASSISTANT }
 
-    /** One collapsible block: a reasoning passage or a tool call. */
+    /**
+     * One part of a reply, in the order it was written.
+     *
+     * "text" is a stretch of the visible reply, "thinking" a reasoning passage and
+     * "tool" a tool call. Keeping the reply's own text here, instead of gathering
+     * it all at the end, lets the reading view show it between the tools.
+     */
     data class Block(
-        val kind: String,   // "thinking" | "tool"
+        val kind: String,   // "thinking" | "tool" | "text"
         val text: String,
         val name: String? = null   // tool name, when kind == "tool"
     )
@@ -84,8 +90,11 @@ object ChatMarkdownParser {
 
     fun parse(content: String): Result {
         // A Kelivo export marks each turn with a time and a name instead of a role
-        // header. The two never look alike, so the format is decided from the file.
+        // header, and a Chatbox export puts each turn inside a fence under a
+        // lower-case role label. Neither looks like the other or like the format
+        // below, so which parser to use is decided from the file itself.
         if (KelivoParser.isKelivo(content)) return KelivoParser.parse(content)
+        if (ChatboxParser.isChatbox(content)) return ChatboxParser.parse(content)
 
         var title: String? = null
         var role: Role? = null
@@ -143,8 +152,8 @@ object ChatMarkdownParser {
 
         val messages = rawMessages.map { (msgRole, body, _) ->
             if (msgRole == Role.ASSISTANT) {
-                val (content, blocks) = segmentAssistant(body)
-                val (text, images) = splitImages(normalizeImages(content))
+                val blocks = segmentAssistant(body)
+                val (text, images) = splitImages(normalizeImages(visibleText(blocks)))
                 Message(msgRole, text, null, images, blocks)
             } else {
                 val (text, images) = splitImages(normalizeImages(body))
@@ -156,19 +165,26 @@ object ChatMarkdownParser {
     }
 
     /**
-     * Splits an assistant message into collapsible blocks and the visible reply.
+     * Splits an assistant message into the order it was written.
      *
      * Reasoning is exported as `>` quote lines and a tool call starts at a
      * `**Tool**: \`name\`` line. Both can appear more than once and in any
-     * order, so each run becomes its own block. A quote only counts as reasoning
-     * when it is a run of quote lines with nothing but blank lines around it;
-     * a quote used for emphasis inside the reply stays in the text.
+     * order, so each run becomes its own block, and the reply's own text stays
+     * between them instead of being gathered at the end. A quote only counts as
+     * reasoning when it is a run of quote lines with nothing but blank lines
+     * around it; a quote used for emphasis inside the reply stays in the text.
      */
-    private fun segmentAssistant(content: String): Pair<String, List<Block>> {
+    private fun segmentAssistant(content: String): List<Block> {
         val lines = content.lines()
         val blocks = ArrayList<Block>()
         val prose = ArrayList<String>()
         var index = 0
+
+        fun flushProse() {
+            val text = prose.joinToString("\n").trim()
+            prose.clear()
+            if (text.isNotEmpty()) blocks.add(Block("text", text))
+        }
 
         while (index < lines.size) {
             if (lines[index].isBlank()) {
@@ -179,29 +195,34 @@ object ChatMarkdownParser {
 
             val quoteRun = readQuoteRun(lines, index)
             if (quoteRun != null) {
+                flushProse()
                 blocks.add(Block("thinking", quoteRun.second))
-                prose.add("")
                 index = quoteRun.first
                 continue
             }
 
             val toolName = toolNameOf(lines[index])
             if (toolName != null) {
+                flushProse()
                 val start = index
                 index++
                 while (index < lines.size && !isBoundary(lines, index)) index++
                 val detail = lines.subList(start + 1, index).joinToString("\n").trim()
                 blocks.add(Block("tool", detail, toolName.ifBlank { null }))
-                prose.add("")
                 continue
             }
 
             prose.add(lines[index])
             index++
         }
+        flushProse()
 
-        return prose.joinToString("\n").trim() to blocks
+        return blocks
     }
+
+    /** The visible reply, which is every "text" stretch joined back together. */
+    private fun visibleText(blocks: List<Block>): String =
+        blocks.filter { it.kind == "text" }.joinToString("\n\n") { it.text }
 
     /**
      * A run of `>` lines counts as reasoning when it stands apart from the reply:

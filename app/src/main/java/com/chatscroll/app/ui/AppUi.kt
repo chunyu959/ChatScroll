@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
@@ -128,6 +129,9 @@ fun Root() {
     var renameTarget by remember { mutableStateOf<ConversationSummary?>(null) }
     var duplicate by remember { mutableStateOf<ImportOutcome.Duplicate?>(null) }
     var searchHits by remember { mutableStateOf<List<SearchHit>?>(null) }
+    var selecting by rememberSaveable { mutableStateOf(false) }
+    val selectedIds = remember { mutableStateListOf<String>() }
+    var confirmBatch by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     var searchJob by remember { mutableStateOf<Job?>(null) }
     var rememberPosition by remember { mutableStateOf(Settings.rememberPosition(context)) }
@@ -229,9 +233,17 @@ fun Root() {
             }
         )
     } else {
+        if (selecting) {
+            BackHandler {
+                selecting = false
+                selectedIds.clear()
+            }
+        }
         ListScreen(
             conversations = conversations.toList(),
             searchHits = searchHits,
+            selecting = selecting,
+            selectedIds = selectedIds.toSet(),
             onQueryChange = { query ->
                 searchJob?.cancel()
                 if (query.isBlank()) {
@@ -271,7 +283,15 @@ fun Root() {
                 )
             },
             onItemAction = { actionTarget = it },
-            onSettings = { screen = "settings" }
+            onSettings = { screen = "settings" },
+            onToggleSelected = { summary ->
+                if (summary.id in selectedIds) selectedIds.remove(summary.id) else selectedIds.add(summary.id)
+            },
+            onExitSelection = {
+                selecting = false
+                selectedIds.clear()
+            },
+            onDeleteSelected = { if (selectedIds.isNotEmpty()) confirmBatch = true }
         )
     }
 
@@ -295,6 +315,12 @@ fun Root() {
             },
             onDelete = {
                 deleteTarget = target
+                actionTarget = null
+            },
+            onBatchDelete = {
+                selecting = true
+                selectedIds.clear()
+                selectedIds.add(target.id)
                 actionTarget = null
             }
         )
@@ -331,6 +357,36 @@ fun Root() {
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
+
+    if (confirmBatch) {
+        val count = selectedIds.size
+        AlertDialog(
+            onDismissRequest = { confirmBatch = false },
+            title = { Text(stringResource(R.string.batch_delete_title)) },
+            text = { Text(stringResource(R.string.batch_delete_text, count)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val ids = selectedIds.toList()
+                    ids.forEach { ConversationStore.delete(context, it) }
+                    if (openId != null && openId in ids) {
+                        openId = null
+                        screen = "list"
+                    }
+                    selecting = false
+                    selectedIds.clear()
+                    confirmBatch = false
+                    refresh()
+                }) {
+                    Text(stringResource(R.string.action_confirm_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmBatch = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             }

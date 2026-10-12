@@ -296,14 +296,21 @@ private fun UserMessage(message: ChatMessage) {
     }
 }
 
-/** Assistant message: collapsible thinking (if any) + rendered Markdown. */
+/**
+ * Assistant message, shown in the order it was written: a stretch of the reply,
+ * then a tool call or a thought, then the next stretch. Conversations imported
+ * before that order was kept have no "text" parts, so their reply still follows
+ * the folded blocks as one piece.
+ */
 @Composable
 private fun AssistantMessage(message: ChatMessage) {
+    val interleaved = message.blocks.any { it.kind == "text" }
     Column(Modifier.fillMaxWidth()) {
         SpeakerLine(message, Alignment.Start)
         message.blocks.forEach { block ->
             when (block.kind) {
                 "tool" -> ToolBlock(block.name, block.text)
+                "text" -> if (block.text.isNotBlank()) MessageBody(message.copy(content = block.text))
                 else -> ThinkingBlock(block.text)
             }
             Spacer(Modifier.height(8.dp))
@@ -313,7 +320,7 @@ private fun AssistantMessage(message: ChatMessage) {
             ThinkingBlock(message.thinking)
             Spacer(Modifier.height(8.dp))
         }
-        if (message.content.isNotBlank() || message.images.isNotEmpty()) {
+        if (!interleaved && (message.content.isNotBlank() || message.images.isNotEmpty())) {
             MessageBody(message)
         }
     }

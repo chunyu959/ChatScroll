@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.PushPin
@@ -35,7 +36,7 @@ import com.chatscroll.app.data.ConversationSummary
 import com.chatscroll.app.ui.theme.Terracotta
 
 /**
- * Bottom sheet shown on conversation long-press: rename / pin / delete.
+ * Bottom sheet shown on conversation long-press: rename / pin / delete one / delete several.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +45,8 @@ fun ConversationActionSheet(
     onDismiss: () -> Unit,
     onRename: () -> Unit,
     onTogglePin: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onBatchDelete: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Text(
@@ -72,6 +74,11 @@ fun ConversationActionSheet(
             label = stringResource(R.string.action_delete),
             tint = Terracotta,
             onClick = onDelete
+        )
+        SheetAction(
+            icon = Icons.Filled.Checklist,
+            label = stringResource(R.string.action_batch_delete),
+            onClick = onBatchDelete
         )
         // bottom spacing inside the sheet
         Spacer(Modifier.height(16.dp))

@@ -89,7 +89,8 @@ object KelivoParser {
 
         val messages = turns.map { turn ->
             if (turn.role == ChatMarkdownParser.Role.ASSISTANT) {
-                val (text, blocks) = segment(turn.body)
+                val blocks = segment(turn.body)
+                val text = blocks.filter { it.kind == "text" }.joinToString("\n\n") { it.text }
                 val (body, images) = splitImages(text)
                 ChatMarkdownParser.Message(
                     turn.role, body, null, images, blocks, turn.speaker, turn.time
@@ -113,21 +114,29 @@ object KelivoParser {
     )
 
     /**
-     * Pulls reasoning and tool calls out of an assistant turn.
+     * Pulls reasoning and tool calls out of an assistant turn, keeping the reply's
+     * own text where it was written.
      *
      * Reasoning is the fenced block that follows a `**思考内容**` label. A tool call
      * is a line holding nothing but `[name]`; everything up to the next tool, the
-     * next thought, or the reply belongs to it. The reply is whatever is left once
-     * both have been lifted out.
+     * next thought, or the reply belongs to it. The reply's text stays between
+     * them rather than being gathered at the end.
      */
-    private fun segment(body: String): Pair<String, List<ChatMarkdownParser.Block>> {
+    private fun segment(body: String): List<ChatMarkdownParser.Block> {
         val lines = body.lines()
         val blocks = ArrayList<ChatMarkdownParser.Block>()
         val prose = ArrayList<String>()
         var index = 0
 
+        fun flushProse() {
+            val text = prose.joinToString("\n").trim()
+            prose.clear()
+            if (text.isNotEmpty()) blocks.add(ChatMarkdownParser.Block("text", text))
+        }
+
         while (index < lines.size) {
             if (lines[index].trim() == thinkingLabel) {
+                flushProse()
                 val (next, text) = readThinking(lines, index + 1)
                 if (text.isNotEmpty()) blocks.add(ChatMarkdownParser.Block("thinking", text))
                 index = next
@@ -136,6 +145,7 @@ object KelivoParser {
 
             val tool = toolHeaderRegex.matchEntire(lines[index].trim())
             if (tool != null) {
+                flushProse()
                 val start = index + 1
                 index = start
                 while (index < lines.size && !isToolBoundary(lines, index)) index++
@@ -147,8 +157,9 @@ object KelivoParser {
             prose.add(lines[index])
             index++
         }
+        flushProse()
 
-        return prose.joinToString("\n").trim() to blocks
+        return blocks
     }
 
     /** The fenced block after a thinking label, and where to resume after it. */

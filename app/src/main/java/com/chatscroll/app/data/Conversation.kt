@@ -10,7 +10,7 @@ import java.util.UUID
 
 @Serializable
 data class MessageBlock(
-    val kind: String,   // "thinking" | "tool"
+    val kind: String,   // "thinking" | "tool" | "text"
     val text: String,
     val name: String? = null
 )
@@ -24,8 +24,10 @@ data class ChatMessage(
     // conversations imported before this was kept, and for exports with no names.
     val speaker: String? = null,
     val time: String? = null,
-    // Reasoning and tool calls, in order. Empty for conversations imported
-    // before this was recorded; those still use [thinking].
+    // The reply in the order it was written: prose, a tool call, more prose.
+    // "text" blocks are the visible reply; the rest fold away. Empty for
+    // conversations imported before this was recorded; those still use [thinking]
+    // and [content].
     val blocks: List<MessageBlock> = emptyList(),
     // Embedded images, kept apart from the text so a single screenshot does not
     // turn the message into half a million characters of layout. Empty for

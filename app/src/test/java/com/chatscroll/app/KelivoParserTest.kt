@@ -89,6 +89,12 @@ class KelivoParserTest {
         assertEquals(listOf("search_web", "calculate"), tools.map { it.name })
         assertTrue(tools[1].text.contains("\"result\":\"0.0\""))
         assertFalse(reply.content.contains("[calculate]"))
+
+        // Thinking, then the two tools, then the reply, in the order they were written.
+        assertEquals(
+            listOf("thinking", "tool", "tool", "text"),
+            reply.blocks.map { it.kind }
+        )
     }
 
     @Test

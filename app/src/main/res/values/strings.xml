@@ -45,4 +45,16 @@
     <string name="settings_frequency">Save interval</string>
     <string name="settings_frequency_desc">Recommended 3 seconds, 1 second minimum.</string>
     <string name="settings_seconds_unit">sec</string>
+    <string name="action_batch_delete">Delete several</string>
+    <string name="batch_selected">%1$d selected</string>
+    <string name="batch_delete_title">Delete the selected conversations?</string>
+    <string name="batch_delete_text">%1$d conversations will be removed from this device. This cannot be undone.</string>
+    <string name="import_formats_title">Supported apps</string>
+    <string name="import_formats_intro">ChatScroll reads the file itself, so just pick it. These exports are recognized:</string>
+    <string name="import_format_rikkahub_desc">User / Assistant headers, with exported reasoning and embedded images.</string>
+    <string name="import_format_kelivo_desc">Each message has a time and a speaker. Reasoning and tool calls are folded.</string>
+    <string name="import_format_chatbox_desc">user / assistant headers with the text in a code block, including tool calls.</string>
+    <string name="import_format_chatbox_note">Chatbox exports don’t include images or the model’s reasoning.</string>
+    <string name="import_format_other_desc">Anything else opens as a single document.</string>
+    <string name="import_choose_file">Choose a file</string>
 </resources>

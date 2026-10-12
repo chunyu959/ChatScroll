@@ -45,4 +45,16 @@
     <string name="settings_frequency">记忆频率</string>
     <string name="settings_frequency_desc">推荐 3 秒，最短 1 秒。</string>
     <string name="settings_seconds_unit">秒</string>
+    <string name="action_batch_delete">批量删除</string>
+    <string name="batch_selected">已选 %1$d 条</string>
+    <string name="batch_delete_title">删除选中的对话？</string>
+    <string name="batch_delete_text">选中的 %1$d 条对话将从本机删除，此操作无法撤销。</string>
+    <string name="import_formats_title">支持的应用</string>
+    <string name="import_formats_intro">聊卷会自己识别文件格式，直接选择即可。目前支持：</string>
+    <string name="import_format_rikkahub_desc">User / Assistant 角色标记，含导出的思考过程和内嵌图片。</string>
+    <string name="import_format_kelivo_desc">每条消息带时间和发言人，思考过程与工具调用默认折叠。</string>
+    <string name="import_format_chatbox_desc">user / assistant 标记，正文写在代码块里，含工具调用。</string>
+    <string name="import_format_chatbox_note">Chatbox 的导出文件不包含图片和思考过程。</string>
+    <string name="import_format_other_desc">其余 Markdown 文件会作为单个文档打开。</string>
+    <string name="import_choose_file">选择文件</string>
 </resources>

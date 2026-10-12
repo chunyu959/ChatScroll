@@ -28,7 +28,7 @@ ChatScroll (Chinese: 聊卷) is a lightweight, fully offline Android app for rea
 - **Syntax-highlighted code blocks** — Java, Kotlin, Python, JavaScript, JSON, SQL, YAML, Go, C/C++ and more
 - **LaTeX math** — inline `$...$` and block `$$...$$` formulas
 - **Collapsible thinking** — chain-of-thought exported as leading quotes is folded away, and stays collapsed until you tap it
-- **Conversation library** — every imported file is saved in a list with title, message count and import date. Unread ones are marked *New* until you open them. Long-press to rename, pin or delete; pinned conversations stay on top
+- **Conversation library** — every imported file is saved in a list with title, message count and import date. Unread ones are marked *New* until you open them. Long-press to rename, pin, delete, or delete several at once; pinned conversations stay on top
 - **Duplicate check** — importing a conversation whose content is identical to one you already have asks first, instead of silently creating a second copy. The file name is not what decides it
 - **Two ways to import** — tap **+** inside the app, or use the system *Share* menu to send a `.md` file straight to ChatScroll
 - **Bilingual UI** — English & 简体中文, follows the system language automatically
@@ -57,6 +57,7 @@ Sure! Here's what I found…
 
 - ✅ Supports the [RikkaHub](https://github.com/rikkahub/rikkahub) export format (`**User**:` / `**Assistant**:` headers, including exported reasoning and embedded images)
 - ✅ Supports the [Kelivo](https://github.com/Chevey339/kelivo) export format (each message carries a time and a speaker; reasoning and tool calls are folded by default)
+- ✅ Supports the [Chatbox](https://chatboxai.app) export format (`**user**:` / `**assistant**:` headers with the text in a code block; tool calls are folded by default). Chatbox exports don’t include images or the model’s reasoning
 - ✅ Any other Markdown file — opens as a single readable document
 - 🔜 More formats coming soon
 
