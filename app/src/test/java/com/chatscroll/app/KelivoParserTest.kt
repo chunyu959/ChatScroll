@@ -108,13 +108,48 @@ class KelivoParserTest {
 
     @Test
     fun keepsFetchedPageContentInsideTheTool() {
-        val file = java.io.File("C:/Users/ASUS/AppData/Roaming/CherryStudio/Data/Files/01a10262-ff69-765a-9f46-a87d0d37febf.md")
-        org.junit.Assume.assumeTrue(file.exists())
-        val reply = ChatMarkdownParser.parse(file.readText(Charsets.UTF_8)).messages[1]
-        val fetch = reply.blocks.last { it.name == "kelivo_fetch" && it.text.isNotBlank() }
-        assertTrue(fetch.text.contains("is-a-thesis-always-mandatory"))
-        assertTrue(fetch.text.contains("April 11, 2025"))
-        assertTrue(reply.content.startsWith("醒栖，工具都调用过了"))
+        val fetchedPage = """
+            # Synthetic library guide
+
+            [Library index](https://example.invalid/library)
+
+            ## Visiting the archive
+
+            June 12, 2030
+
+            - Fictional opening hours
+            - Synthetic visitor instructions
+        """.trimIndent()
+        val md = """
+            # Synthetic fetch exercise
+
+            > 2030年6月12日 09:30:00 · Reader
+
+            Fetch the synthetic library guide.
+
+            ---
+
+            > 2030年6月12日 09:30:01 · Assistant
+
+            [kelivo_fetch]
+            {"status":"ready"}
+
+            [kelivo_fetch]
+            FETCHED_PAGE
+
+            The synthetic tools have finished. Here is the reply.
+
+            ---
+        """.trimIndent().replace("FETCHED_PAGE", fetchedPage)
+        val reply = ChatMarkdownParser.parse(md).messages[1]
+        val tools = reply.blocks.filter { it.kind == "tool" }
+
+        assertEquals(listOf("kelivo_fetch", "kelivo_fetch"), tools.map { it.name })
+        assertEquals(fetchedPage, tools.last().text)
+        assertEquals("The synthetic tools have finished. Here is the reply.", reply.content)
+        assertEquals(listOf("tool", "tool", "text"), reply.blocks.map { it.kind })
+        assertFalse(reply.content.contains("June 12, 2030"))
+        assertFalse(reply.content.contains("example.invalid"))
     }
 
     @Test

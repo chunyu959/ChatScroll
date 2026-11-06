@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_sort_newest">Newest first</string>
+    <string name="library_sort_oldest">Oldest first</string>
+    <string name="library_sort_name_asc">Name A–Z</string>
+    <string name="library_sort_name_desc">Name Z–A</string>
+    <string name="library_sort_largest">Largest file</string>
+    <string name="library_sort_smallest">Smallest file</string>
+    <string name="library_original_size">Original %1$s</string>
+    <string name="library_original_size_unknown">Size unknown</string>
+</resources>

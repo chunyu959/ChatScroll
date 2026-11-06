@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="organization_all">All conversations</string>
+    <string name="organization_unfiled">Unclassified</string>
+    <string name="organization_folder_filter">Folder: %1$s</string>
+    <string name="organization_manage_folders">Manage folders</string>
+    <string name="organization_no_folders">No folders yet. Create a folder to organize your conversations.</string>
+    <string name="organization_create_folder">Create folder</string>
+    <string name="organization_rename_folder">Rename folder</string>
+    <string name="organization_rename_named_folder">Rename %1$s</string>
+    <string name="organization_delete_named_folder">Delete %1$s</string>
+    <string name="organization_folder_name">Folder name</string>
+    <string name="organization_folder_name_hint">Use 1–60 characters.</string>
+    <string name="organization_folder_name_too_long">Use no more than 60 characters.</string>
+    <string name="organization_delete_folder_title">Delete folder?</string>
+    <string name="organization_delete_folder_message">Delete “%1$s”? Conversations in this folder will return to Unclassified. The conversations and their contents will be kept.</string>
+    <string name="organization_done">Done</string>
+    <string name="organization_sort">Sort: %1$s</string>
+    <string name="organization_sort_time_desc">Newest first</string>
+    <string name="organization_sort_time_asc">Oldest first</string>
+    <string name="organization_sort_name_asc">Name: A to Z</string>
+    <string name="organization_sort_name_desc">Name: Z to A</string>
+    <string name="organization_sort_size_desc">Original file: largest first</string>
+    <string name="organization_sort_size_asc">Original file: smallest first</string>
+    <string name="organization_search_scope">Searching in: %1$s</string>
+    <string name="organization_move">Move to folder</string>
+    <string name="organization_move_selected">Move selected conversations to folder</string>
+    <string name="organization_move_description">Choose a destination for these conversations.</string>
+    <string name="organization_move_confirm">Move</string>
+    <string name="organization_original_size">Original file: %1$s</string>
+    <string name="organization_original_size_unknown">Original file size unknown</string>
+    <string name="organization_folder_empty_title">No conversations here</string>
+    <string name="organization_folder_empty_subtitle">Choose All conversations to see conversations in other folders.</string>
+    <string name="organization_invalid_folder">Use a unique folder name with 1–60 characters, and a folder that still exists. Refresh and try again.</string>
+</resources>

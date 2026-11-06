@@ -234,13 +234,7 @@ class ChatMarkdownParserTest {
         val chunk = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQ"
         val wrapped = "![Image](data:image/png;base64,$chunk\n$chunk\n$chunk)"
 
-        val md = """
-            **Assistant**:
-
-            Here is your image:
-
-            $wrapped
-        """.trimIndent()
+        val md = "**Assistant**:\n\nHere is your image:\n\n$wrapped"
 
         val result = ChatMarkdownParser.parse(md)
 

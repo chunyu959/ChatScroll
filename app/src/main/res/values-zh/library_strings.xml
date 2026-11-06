@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_backup_done">已备份 %1$d 条对话。</string>
+    <string name="library_restore_title">恢复备份</string>
+    <string name="library_restore_message">将先校验完整备份，再合并对话，不覆盖现有记录。发生冲突时作为新副本恢复。备份不包含阅读设置。</string>
+    <string name="library_restore_action">恢复</string>
+    <string name="library_restore_done">已恢复 %1$d 条对话。</string>
+    <string name="library_reparse_title">重新解析</string>
+    <string name="library_reparse_note">使用保存的原文和当前解析规则重新生成内容。标题、置顶会保留，上一版本保留供恢复。若消息分界发生变化，阅读位置和书签可能重置。</string>
+    <string name="library_reparse_action">重新解析</string>
+    <string name="library_reparse_done">已重新解析对话。</string>
+    <string name="library_format_title">导入格式</string>
+    <string name="library_format_note">标准导出可使用自动识别；原文件格式有歧义时，可手动指定。</string>
+    <string name="library_format_auto">自动识别</string>
+    <string name="library_format_rikka">RikkaHub / 角色标记</string>
+    <string name="library_format_chatbox">Chatbox</string>
+    <string name="library_format_kelivo">Kelivo</string>
+    <string name="library_format_markdown">普通 Markdown 文档</string>
+    <string name="library_source_title">原始 Markdown</string>
+    <string name="library_export_source">保存原始文件</string>
+    <string name="library_source_preview_note">预览中超长单行会缩短显示。保存原始文件可获得完整、未经删改的内容。</string>
+    <string name="library_import_queue">共 %1$d 份文件正在处理或等待</string>
+    <string name="library_failure_detail">操作未能完成。请检查剩余存储空间和文件访问权限后重试。现有记录会保留。</string>
+    <string name="library_operation_failed">操作失败</string>
+    <string name="library_retry">重试</string>
+    <string name="library_close">关闭</string>
+    <string name="library_search_loading">正在搜索…</string>
+    <string name="library_storage_issue_title">部分记录需要恢复</string>
+    <string name="library_storage_issue">有 %1$d 条记录暂时无法读取，原文件仍然保留，其他对话可继续使用。可以重新导入原文或恢复有效备份。应用没有删除损坏记录。</string>
+</resources>

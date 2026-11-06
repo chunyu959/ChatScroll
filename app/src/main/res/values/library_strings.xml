@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_backup_done">Backed up %1$d conversations.</string>
+    <string name="library_restore_title">Restore backup</string>
+    <string name="library_restore_message">The complete backup will be checked first. Conversations are merged; existing entries are not overwritten. Conflicting entries are restored as new copies. Reading settings are not part of this backup.</string>
+    <string name="library_restore_action">Restore</string>
+    <string name="library_restore_done">Restored %1$d conversations.</string>
+    <string name="library_reparse_title">Parse again</string>
+    <string name="library_reparse_note">Use the saved original with the current parser. The title and pin are preserved, and the previous version is retained for recovery. Position and bookmarks may reset if message boundaries change.</string>
+    <string name="library_reparse_action">Parse again</string>
+    <string name="library_reparse_done">Conversation parsed again.</string>
+    <string name="library_format_title">Import format</string>
+    <string name="library_format_note">Automatic detection works for standard exports. Choose a format if the original is ambiguous.</string>
+    <string name="library_format_auto">Detect automatically</string>
+    <string name="library_format_rikka">RikkaHub / role headers</string>
+    <string name="library_format_chatbox">Chatbox</string>
+    <string name="library_format_kelivo">Kelivo</string>
+    <string name="library_format_markdown">Plain Markdown document</string>
+    <string name="library_source_title">Original Markdown</string>
+    <string name="library_export_source">Save original file</string>
+    <string name="library_source_preview_note">Very long lines are shortened in this preview. Save the original file to access the exact, complete content.</string>
+    <string name="library_import_queue">%1$d imports being processed or waiting</string>
+    <string name="library_failure_detail">The operation could not finish. Check available storage and file access, then try again. Existing records are retained.</string>
+    <string name="library_operation_failed">Operation failed</string>
+    <string name="library_retry">Retry</string>
+    <string name="library_close">Close</string>
+    <string name="library_search_loading">Searching…</string>
+    <string name="library_storage_issue_title">Some records need recovery</string>
+    <string name="library_storage_issue">%1$d records could not be read. Their files have been retained; other conversations remain available. Reimport the original or restore a valid backup. No damaged record has been deleted.</string>
+</resources>

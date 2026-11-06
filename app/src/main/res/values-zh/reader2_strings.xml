@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reader2_copy_body">复制正文</string>
+    <string name="reader2_copy_all">复制整条消息</string>
+    <string name="reader2_restore_previous">恢复上次解析结果</string>
+    <string name="reader2_bookmarked">已添加书签</string>
+    <string name="reader2_table_swipe">左右滑动查看表格</string>
+    <string name="reader2_table_open">全屏查看</string>
+    <string name="reader2_table_title">表格</string>
+    <string name="reader2_table_pan">可左右、上下滑动查看</string>
+</resources>

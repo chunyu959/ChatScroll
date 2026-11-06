@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reader_actions">Reading actions</string>
+    <string name="reader_directory">Message directory</string>
+    <string name="reader_bookmarks">Bookmarks</string>
+    <string name="reader_all_messages">All messages</string>
+    <string name="reader_no_bookmarks">No bookmarks yet</string>
+    <string name="reader_expand_all">Expand all thoughts and tools</string>
+    <string name="reader_collapse_all">Collapse all thoughts and tools</string>
+    <string name="reader_scroll_bottom">Jump to bottom</string>
+    <string name="reader_view_source">View imported source</string>
+    <string name="reader_reparse">Reparse imported source</string>
+    <string name="reader_previous_match">Previous search result</string>
+    <string name="reader_next_match">Next search result</string>
+    <string name="reader_clear_search">Clear</string>
+    <string name="reader_close_search">Close search and keep query</string>
+    <string name="reader_close">Close</string>
+    <string name="reader_user">You</string>
+    <string name="reader_assistant">Assistant</string>
+    <string name="reader_message_heading">%1$d · %2$s</string>
+    <string name="reader_message_actions">Actions for message %1$d</string>
+    <string name="reader_add_bookmark">Bookmark message</string>
+    <string name="reader_remove_bookmark">Remove bookmark</string>
+    <string name="reader_copy_message">Copy whole message</string>
+    <string name="reader_copy_code">Copy code block…</string>
+    <string name="reader_no_code">This message has no fenced code blocks.</string>
+    <string name="reader_code_heading">Code %1$d · %2$s</string>
+    <string name="reader_code_plain">Plain text</string>
+    <string name="reader_expanded">Expanded</string>
+    <string name="reader_collapsed">Collapsed</string>
+    <string name="reader_open_image">Open image full screen</string>
+    <string name="reader_view_image_number">View image %1$d full screen</string>
+    <string name="reader_image">Image; pinch to zoom and drag to pan</string>
+    <string name="reader_image_failed">Image could not be loaded</string>
+    <string name="reader_zoom_in">Zoom in</string>
+    <string name="reader_zoom_out">Zoom out</string>
+    <string name="reader_zoom_reset">Reset zoom</string>
+</resources>

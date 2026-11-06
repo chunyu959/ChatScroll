@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_appearance_heading">Appearance</string>
+    <string name="settings_theme_label">Theme</string>
+    <string name="settings_theme_description">Choose a warm light or dark appearance, or follow your device.</string>
+    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_reading_heading">Reading</string>
+    <string name="settings_font_size_label">Text size</string>
+    <string name="settings_font_size_value">%1$d sp</string>
+    <string name="settings_line_height_label">Line spacing</string>
+    <string name="settings_line_height_value">%1$.2f ×</string>
+    <string name="settings_reading_preview">A little more room to read.\nPreview your text size and line spacing here.</string>
+    <string name="settings_position_heading">Reading position</string>
+    <string name="settings_backup_heading">Local backup</string>
+    <string name="settings_backup_notice">Backup files contain your conversations and reading data. They may include private content. Choose where to save or import a file using your device’s file picker.</string>
+    <string name="settings_backup_export">Export backup</string>
+    <string name="settings_backup_restore">Import backup</string>
+    <string name="settings_backup_busy">Working on your backup…</string>
+</resources>

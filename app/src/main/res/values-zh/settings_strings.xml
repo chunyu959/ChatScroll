@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_appearance_heading">外观</string>
+    <string name="settings_theme_label">主题</string>
+    <string name="settings_theme_description">选择温暖的浅色、深色外观，或跟随设备设置。</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_reading_heading">阅读</string>
+    <string name="settings_font_size_label">文字大小</string>
+    <string name="settings_font_size_value">%1$d sp</string>
+    <string name="settings_line_height_label">行距</string>
+    <string name="settings_line_height_value">%1$.2f 倍</string>
+    <string name="settings_reading_preview">留一点空间，读得更舒适。\n在这里预览文字大小和行距。</string>
+    <string name="settings_position_heading">阅读位置</string>
+    <string name="settings_backup_heading">本地备份</string>
+    <string name="settings_backup_notice">备份文件包含对话和阅读数据，可能含有私人内容。请通过设备的文件选择器选择保存位置或要导入的文件。</string>
+    <string name="settings_backup_export">导出备份</string>
+    <string name="settings_backup_restore">导入备份</string>
+    <string name="settings_backup_busy">正在处理备份…</string>
+</resources>

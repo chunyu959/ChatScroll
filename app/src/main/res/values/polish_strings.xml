@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="polish_pure_mode">Quiet reading mode</string>
+    <string name="polish_pure_mode_detail">Hide numbered message bars. Use the compact message menu or long press for actions; bookmarks stay visible.</string>
+    <string name="polish_storage_title">Storage management</string>
+    <string name="polish_storage_intro">Review local storage usage before cleaning older parsing history.</string>
+    <string name="polish_storage_open">Storage usage and cleanup preview</string>
+    <string name="polish_storage_current">Current conversation data</string>
+    <string name="polish_storage_source">Current originals</string>
+    <string name="polish_storage_images">Image assets</string>
+    <string name="polish_storage_history">History and recovery data</string>
+    <string name="polish_storage_indexes">Search indexes</string>
+    <string name="polish_storage_other">Metadata and other files</string>
+    <string name="polish_storage_total">Total</string>
+    <string name="polish_storage_refresh">Refresh usage and preview</string>
+    <string name="polish_cleanup_title">Clean older history</string>
+    <string name="polish_cleanup_safety">Current content, the most recent recoverable version, image assets, and unknown files are retained. Only validated, unreferenced older revision files are eligible.</string>
+    <string name="polish_cleanup_preview">Eligible: %1$d older revisions, %2$d files, %3$s.</string>
+    <string name="polish_cleanup_protected">Protected revision references: %1$d.</string>
+    <string name="polish_cleanup_skipped">Skipped %1$d records with uncertainty and retained %2$d unknown files.</string>
+    <string name="polish_cleanup_action">Clean older history</string>
+    <string name="polish_cleanup_none">No older history can safely be removed.</string>
+    <string name="polish_cleanup_confirm">Permanently remove %1$d older revisions (%2$s)? Current content and the last recoverable version are retained. The preview will be checked again before removal.</string>
+    <string name="polish_cleanup_done">Removed %1$d files and freed %2$s.</string>
+    <string name="polish_history_title">Restore previous parsing result</string>
+    <string name="polish_history_preview">%1$d messages · parser version %2$d · format %3$s</string>
+    <string name="polish_history_notice">Restore this saved version. Your current title and pin are kept, and the current version becomes the recoverable previous version. Bookmarks and position are retained only where messages can be matched safely.</string>
+    <string name="polish_history_restore">Restore this version</string>
+    <string name="polish_history_none">No previous parsing result is available for this conversation.</string>
+    <string name="polish_history_done">Previous parsing result restored.</string>
+    <string name="polish_preview_stale">Data changed after the preview. Nothing was changed by this operation. Refresh the preview and try again.</string>
+</resources>

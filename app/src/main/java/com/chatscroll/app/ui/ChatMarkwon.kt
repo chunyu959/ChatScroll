@@ -3,18 +3,40 @@ package com.chatscroll.app.ui
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.util.Base64
-import android.text.method.LinkMovementMethod
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
 import android.widget.TextView
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.runtime.key
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.doOnPreDraw
+import com.chatscroll.app.ui.theme.LightReaderPalette
+import com.chatscroll.app.ui.theme.LocalReaderPalette
+import com.chatscroll.app.ui.theme.ReaderPalette
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import org.commonmark.node.Node
 import com.chatscroll.app.Prism4jGrammarLocator
 import io.noties.markwon.AbstractMarkwonPlugin
 import io.noties.markwon.Markwon
@@ -27,6 +49,7 @@ import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin
 import java.util.regex.Pattern
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
+import io.noties.markwon.ext.tables.TableRowSpan
 import io.noties.markwon.ext.tables.TableTheme
 import io.noties.markwon.ext.tasklist.TaskListPlugin
 import io.noties.markwon.html.HtmlPlugin
@@ -36,6 +59,7 @@ import io.noties.markwon.image.AsyncDrawableSpan
 import io.noties.markwon.image.MediaDecoder
 import java.io.InputStream
 import io.noties.markwon.syntax.Prism4jThemeDefault
+import io.noties.markwon.syntax.Prism4jThemeDarkula
 import io.noties.markwon.syntax.SyntaxHighlightPlugin
 import io.noties.prism4j.Prism4j
 
@@ -47,12 +71,6 @@ import io.noties.prism4j.Prism4j
  */
 private const val MAX_BITMAP_EDGE = 1600
 
-private const val CODE_TEXT = 0xFF8A4B28.toInt()
-private const val CODE_BG = 0xFFF3EFE6.toInt()
-private const val TERRACOTTA = 0xFFD97757.toInt()
-private const val TABLE_BORDER = 0xFFE8E3D8.toInt()
-private const val TABLE_HEADER_BG = 0xFFF6F1E7.toInt()
-
 /**
  * Builds the Markwon instance used to render assistant messages:
  * code blocks with syntax highlighting, tables, quotes, task lists,
@@ -60,7 +78,12 @@ private const val TABLE_HEADER_BG = 0xFFF6F1E7.toInt()
  */
 object ChatMarkwon {
 
-    fun build(context: Context): Markwon {
+    fun build(
+        context: Context,
+        palette: ReaderPalette = LightReaderPalette,
+        fontSizeSp: Float = 16f,
+        scaledDensity: Float = context.resources.displayMetrics.scaledDensity
+    ): Markwon {
         val density = context.resources.displayMetrics.density
         fun dip(value: Int): Int = (value * density).toInt()
 
@@ -74,20 +97,22 @@ object ChatMarkwon {
             .usePlugin(
                 TablePlugin.create(
                     TableTheme.buildWithDefaults(context)
-                        .tableBorderColor(TABLE_BORDER)
+                        .tableBorderColor(palette.border.toArgb())
                         .tableBorderWidth(dip(1))
                         .tableCellPadding(dip(10))
-                        .tableEvenRowBackgroundColor(Color.WHITE)
-                        .tableOddRowBackgroundColor(Color.WHITE)
-                        .tableHeaderRowBackgroundColor(TABLE_HEADER_BG)
+                        .tableEvenRowBackgroundColor(palette.tableRow.toArgb())
+                        .tableOddRowBackgroundColor(palette.tableRow.toArgb())
+                        .tableHeaderRowBackgroundColor(palette.tableHeader.toArgb())
                         .build()
                 )
             )
-            .usePlugin(TaskListPlugin.create(context))
+            .usePlugin(TaskListPlugin.create(
+                palette.accent.toArgb(), palette.accent.toArgb(), palette.background.toArgb()
+            ))
             .usePlugin(
                 SyntaxHighlightPlugin.create(
                     Prism4j(Prism4jGrammarLocator()),
-                    Prism4jThemeDefault.create()
+                    if (palette.isDark) Prism4jThemeDarkula.create() else Prism4jThemeDefault.create()
                 )
             )
             // The first processor to match a backslash wins. The built-in one treats
@@ -101,8 +126,9 @@ object ChatMarkwon {
                         includeDefaults()
                     }
             ))
-            .usePlugin(JLatexMathPlugin.create(16f * density) { builder ->
+            .usePlugin(JLatexMathPlugin.create(fontSizeSp * scaledDensity) { builder ->
                 builder.inlinesEnabled(true)
+                builder.theme().textColor(palette.text.toArgb())
             })
             .usePlugin(object : AbstractMarkwonPlugin() {
                 override fun configure(registry: io.noties.markwon.MarkwonPlugin.Registry) {
@@ -133,13 +159,13 @@ object ChatMarkwon {
 
                 override fun configureTheme(builder: MarkwonTheme.Builder) {
                     builder
-                        .codeTextColor(CODE_TEXT)
-                        .codeBackgroundColor(CODE_BG)
-                        .codeBlockTextColor(CODE_TEXT)
-                        .codeBlockBackgroundColor(CODE_BG)
-                        .linkColor(TERRACOTTA)
+                        .codeTextColor(palette.codeText.toArgb())
+                        .codeBackgroundColor(palette.codeBackground.toArgb())
+                        .codeBlockTextColor(palette.codeText.toArgb())
+                        .codeBlockBackgroundColor(palette.codeBackground.toArgb())
+                        .linkColor(palette.accent.toArgb())
                         .isLinkUnderlined(true)
-                        .blockQuoteColor(TERRACOTTA)
+                        .blockQuoteColor(palette.accent.toArgb())
                         .blockQuoteWidth(dip(3))
                         .headingBreakHeight(0)
                 }
@@ -170,28 +196,6 @@ private class BoundedImageDecoder(
         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
             ?: throw IllegalStateException("Could not decode image")
         return BitmapDrawable(resources, bitmap)
-    }
-}
-
-/**
- * Rewrites a display formula into the one shape the renderer treats as math.
- *
- * A `$$` pair on its own line becomes a display formula. Nothing else does: `$...$`
- * and `$$...$$` inside a sentence both come out as plain text, which is why swapping
- * an inline formula for dollars only printed the dollars. So this rewrites just the
- * display form, a `\[...\]` block on its own lines, and leaves inline math to
- * [ParenMathProcessor].
- *
- * Only a matched pair is rewritten, and the formula between them is copied verbatim,
- * so a price like $5, an unmatched bracket, and the backslash commands inside a
- * formula are never touched.
- */
-private val displayMath = Regex("""(?m)^[ \t]*\\\[(.*?)\\\][ \t]*$""", RegexOption.DOT_MATCHES_ALL)
-
-fun normalizeMathDelimiters(markdown: String): String {
-    if (!markdown.contains("\\[")) return markdown
-    return displayMath.replace(markdown) { match ->
-        "$$\n" + match.groupValues[1].trim() + "\n$$"
     }
 }
 
@@ -242,22 +246,127 @@ private fun bitmapSampleSize(width: Int, height: Int, maxEdge: Int): Int {
     return sample
 }
 
-/** Renders a Markdown string inside a Compose layout via a TextView. */
-@Composable
-fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val markwon = remember(context) { ChatMarkwon.build(context) }
+private class ReaderRenderer(val markwon: Markwon) {
+    // Markwon plugins share a parser. Serialize parse calls without blocking the UI;
+    // span creation and all TextView/plugin view callbacks stay on the main thread.
+    private val parseLock = Mutex()
 
-    AndroidView(
-        factory = { ctx ->
-            TextView(ctx).apply {
-                movementMethod = LinkMovementMethod.getInstance()
-                highlightColor = Color.TRANSPARENT
-                setTextColor(0xFF1F1E1D.toInt())
-                textSize = 16f
-            }
-        },
-        update = { markwon.setMarkdown(it, normalizeMathDelimiters(markdown)) },
-        modifier = modifier.fillMaxWidth()
+    suspend fun parse(markdown: String): Node = withContext(Dispatchers.Default) {
+        parseLock.withLock { markwon.parse(normalizeMathDelimiters(markdown)) }
+    }
+}
+
+private val LocalReaderRenderer = staticCompositionLocalOf<ReaderRenderer?> { null }
+
+/** One renderer per reading environment; no rendered spans are shared between views. */
+@Composable
+fun ProvideReaderRendering(preferences: ReaderPreferences, content: @Composable () -> Unit) {
+    val safePreferences = remember(preferences) { preferences.validated() }
+    val renderer = rememberReaderRenderer(safePreferences)
+    CompositionLocalProvider(
+        LocalReaderPreferences provides safePreferences,
+        LocalReaderRenderer provides renderer,
+        content = content
     )
+}
+
+@Composable
+private fun rememberReaderRenderer(preferences: ReaderPreferences): ReaderRenderer {
+    val context = LocalContext.current
+    val palette = LocalReaderPalette.current
+    val density = LocalDensity.current
+    return remember(context, palette, preferences.fontSizeSp, density.density, density.fontScale) {
+        ReaderRenderer(ChatMarkwon.build(context, palette, preferences.fontSizeSp, density.density * density.fontScale))
+    }
+}
+
+private data class ParsedMarkdown(val renderer: ReaderRenderer, val source: String, val node: Node)
+private class SearchBackground(color: Int) : BackgroundColorSpan(color)
+private class SearchForeground(color: Int) : ForegroundColorSpan(color)
+
+private class ReaderTextView(context: Context) : TextView(context) {
+    var appliedQuery: String? = null
+}
+
+/** Rendered-text search offsets remain correct across links, emphasis, and headings. */
+private fun highlightMatches(text: Spannable, query: String, palette: ReaderPalette) {
+    text.getSpans(0, text.length, SearchBackground::class.java).forEach(text::removeSpan)
+    text.getSpans(0, text.length, SearchForeground::class.java).forEach(text::removeSpan)
+    visibleMatchRanges(text.toString(), query).forEach { range ->
+        text.setSpan(SearchBackground(palette.searchHighlight.toArgb()), range.first, range.last + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        text.setSpan(SearchForeground(palette.searchText.toArgb()), range.first, range.last + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+}
+
+private fun highlightMatches(view: TextView, query: String, palette: ReaderPalette) {
+    val text = view.text as? Spannable ?: return
+    highlightMatches(text, query, palette)
+    // Table rows are replacement spans. Their visible cell text lives in layouts,
+    // so highlighting the parent TextView alone would miss every table cell.
+    text.getSpans(0, text.length, TableRowSpan::class.java).forEach { row ->
+        val cellWidth = row.cellWidth()
+        if (cellWidth > 0) {
+            var x = 0
+            while (x < view.width) {
+                val layout = row.findLayoutForHorizontalOffset(x) ?: break
+                (layout.text as? Spannable)?.let { highlightMatches(it, query, palette) }
+                x += cellWidth
+            }
+        }
+    }
+}
+
+/** Selectable Markdown with one shared renderer and independent spans per TextView. */
+@Composable
+fun MarkdownText(markdown: String, modifier: Modifier = Modifier, searchQuery: String = "") {
+    val preferences = LocalReaderPreferences.current
+    val palette = LocalReaderPalette.current
+    val renderer = LocalReaderRenderer.current ?: rememberReaderRenderer(preferences)
+    val parsed by produceState<ParsedMarkdown?>(null, renderer, markdown) {
+        value = ParsedMarkdown(renderer, markdown, renderer.parse(markdown))
+    }
+    val current = parsed?.takeIf { it.renderer === renderer && it.source == markdown }
+    // Render once on the UI thread. Image/LaTeX spans contain mutable drawable state,
+    // so this result belongs to this composition and is never cached globally.
+    val rendered = remember(current, preferences) { current?.let { renderer.markwon.render(it.node) } }
+
+    if (rendered == null) {
+        val placeholderHeight = with(LocalDensity.current) {
+            (preferences.fontSizeSp * preferences.lineHeightMultiplier).sp.toDp()
+        }
+        Spacer(modifier.fillMaxWidth().height(placeholderHeight))
+        return
+    }
+
+    // LazyColumn can premeasure an empty native view before async parsing finishes.
+    // The first native measure must see both the final typography and populated text.
+    // Source/typography changes get a fresh view; search only changes highlight spans.
+    key(renderer, markdown, preferences) {
+        AndroidView(
+            factory = { context ->
+                ReaderTextView(context).apply {
+                    setTextIsSelectable(true)
+                    linksClickable = true
+                    textSize = preferences.fontSizeSp
+                    setLineSpacing(0f, preferences.lineHeightMultiplier)
+                    setTextColor(palette.text.toArgb())
+                    setLinkTextColor(palette.accent.toArgb())
+                    highlightColor = palette.searchHighlight.toArgb()
+                    renderer.markwon.setParsedMarkdown(this, SpannableStringBuilder(rendered))
+                }
+            },
+            update = { view ->
+                if (view.appliedQuery != searchQuery) {
+                    highlightMatches(view, searchQuery, palette)
+                    view.appliedQuery = searchQuery
+                    view.invalidate()
+                    // Tables create their cell layouts during measurement, after update().
+                    view.doOnPreDraw {
+                        highlightMatches(view, view.appliedQuery.orEmpty(), palette)
+                    }
+                }
+            },
+            modifier = modifier.fillMaxWidth()
+        )
+    }
 }

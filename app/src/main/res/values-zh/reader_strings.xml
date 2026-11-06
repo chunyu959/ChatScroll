@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reader_actions">阅读操作</string>
+    <string name="reader_directory">消息目录</string>
+    <string name="reader_bookmarks">书签</string>
+    <string name="reader_all_messages">全部消息</string>
+    <string name="reader_no_bookmarks">暂无书签</string>
+    <string name="reader_expand_all">展开全部思考与工具</string>
+    <string name="reader_collapse_all">收起全部思考与工具</string>
+    <string name="reader_scroll_bottom">跳到底部</string>
+    <string name="reader_view_source">查看导入原文</string>
+    <string name="reader_reparse">重新解析导入原文</string>
+    <string name="reader_previous_match">上一条搜索结果</string>
+    <string name="reader_next_match">下一条搜索结果</string>
+    <string name="reader_clear_search">清除</string>
+    <string name="reader_close_search">关闭搜索并保留关键词</string>
+    <string name="reader_close">关闭</string>
+    <string name="reader_user">你</string>
+    <string name="reader_assistant">助手</string>
+    <string name="reader_message_heading">%1$d · %2$s</string>
+    <string name="reader_message_actions">第 %1$d 条消息的操作</string>
+    <string name="reader_add_bookmark">添加消息书签</string>
+    <string name="reader_remove_bookmark">移除书签</string>
+    <string name="reader_copy_message">复制整条消息</string>
+    <string name="reader_copy_code">复制代码块…</string>
+    <string name="reader_no_code">这条消息没有围栏代码块。</string>
+    <string name="reader_code_heading">代码 %1$d · %2$s</string>
+    <string name="reader_code_plain">纯文本</string>
+    <string name="reader_expanded">已展开</string>
+    <string name="reader_collapsed">已收起</string>
+    <string name="reader_open_image">全屏查看图片</string>
+    <string name="reader_view_image_number">全屏查看第 %1$d 张图片</string>
+    <string name="reader_image">图片；双指缩放，拖动平移</string>
+    <string name="reader_image_failed">无法加载图片</string>
+    <string name="reader_zoom_in">放大</string>
+    <string name="reader_zoom_out">缩小</string>
+    <string name="reader_zoom_reset">重置缩放</string>
+</resources>

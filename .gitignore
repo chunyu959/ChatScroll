@@ -26,6 +26,10 @@ keystore.properties
 # Private maintenance notes (the public README is README.md / README.zh-CN.md)
 项目总结.md
 
+# Local release/acceptance reports may contain machine paths and private corpus references
+/ChatScroll-v*-*.md
+/ChatScroll-v*-*.txt
+
 # OS
 .DS_Store
 Thumbs.db

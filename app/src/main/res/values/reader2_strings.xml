@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reader2_copy_body">Copy body</string>
+    <string name="reader2_copy_all">Copy entire message</string>
+    <string name="reader2_restore_previous">Restore previous parser result</string>
+    <string name="reader2_bookmarked">Bookmarked</string>
+    <string name="reader2_table_swipe">Swipe left or right to read the table</string>
+    <string name="reader2_table_open">Open full screen</string>
+    <string name="reader2_table_title">Table</string>
+    <string name="reader2_table_pan">Scroll horizontally and vertically to read</string>
+</resources>

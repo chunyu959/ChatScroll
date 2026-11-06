@@ -45,7 +45,7 @@
     <string name="settings_frequency">Save interval</string>
     <string name="settings_frequency_desc">Recommended 3 seconds, 1 second minimum.</string>
     <string name="settings_seconds_unit">sec</string>
-    <string name="action_batch_delete">Delete several</string>
+    <string name="action_batch_delete">Batch actions</string>
     <string name="batch_selected">%1$d selected</string>
     <string name="batch_delete_title">Delete the selected conversations?</string>
     <string name="batch_delete_text">%1$d conversations will be removed from this device. This cannot be undone.</string>

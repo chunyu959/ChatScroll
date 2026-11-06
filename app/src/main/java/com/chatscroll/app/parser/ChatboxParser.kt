@@ -1,160 +1,107 @@
 package com.chatscroll.app.parser
 
-/**
- * Parser for chat transcripts exported by Chatbox.
- *
- * Each turn is a bold, lower-case role label whose body sits inside a fence:
- *
- *     **system**:
- *
- *     ```
- *     You are a helpful assistant.
- *     ```
- *
- *     **user**:
- *
- *     ```
- *     the question
- *     ```
- *
- *     **assistant**:
- *
- *     ```
- *     the start of the reply
- *
- *     ```
- *
- *     Tool Call: web_search (state: result)
- *     Args:
- *       { ... }
- *     Result:
- *       { ... }
- *
- *     ```
- *     the rest of the reply
- *     ```
- *
- * The role labels are what sets this apart from a RikkaHub export, which writes
- * `**User**:` with a capital letter and puts the text straight under it. A file is
- * only treated as Chatbox when such a label is followed, after blank lines, by a
- * fence, so a stray `**user**:` inside some other document is left alone.
- *
- * A tool call is a `Tool Call: name` line standing between the fences. It is
- * returned as a collapsible block, and each fenced stretch of the reply stays
- * where it was, so the text reads between the tools instead of after all of them.
- * Chatbox exports carry neither images nor the model's reasoning, only an
- * `[image]` placeholder, which is kept as ordinary text.
- */
+/** Chatbox wraps body stretches in fences and writes tool calls between them. */
 object ChatboxParser {
-
     private val roleRegex = Regex("^\\*\\*(system|user|assistant)\\*\\*:\\s*$")
-    private val fenceRegex = Regex("^\\s*(```+|~~~+).*")
     private val toolCallRegex = Regex("^Tool Call:\\s*(\\S+).*")
 
-    /** True when the file opens its turns the way a Chatbox export does. */
+    private fun header(line: String): MatchResult? =
+        if (line.startsWith("    ") || line.startsWith('\t')) null else roleRegex.matchEntire(line.trim())
+
+    internal fun hasOpeningHeader(content: String): Boolean {
+        val lines = content.lines()
+        return lines.getOrNull(ChatMarkdownParser.firstContentLine(lines))?.let(::header) != null
+    }
+
     fun isChatbox(content: String): Boolean {
         val lines = content.lines()
-        for (index in lines.indices) {
-            if (roleRegex.matches(lines[index].trim()) && fenceAfter(lines, index) != null) {
-                return true
-            }
-        }
-        return false
+        val first = ChatMarkdownParser.firstContentLine(lines)
+        if (lines.getOrNull(first)?.let(::header) == null) return false
+        val next = nextNonblank(lines, first + 1)
+        return next < lines.size && MarkdownFenceScanner.opening(lines[next]) != null
     }
 
     fun parse(content: String): ChatMarkdownParser.Result {
-        var title: String? = null
+        if (!hasOpeningHeader(content)) return ChatMarkdownParser.document(content)
+        val lines = content.lines()
+        val start = ChatMarkdownParser.firstContentLine(lines)
+        val title = lines.take(start).firstOrNull { it.trim().startsWith("# ") }
+            ?.trim()?.removePrefix("# ")?.trim()
         val messages = ArrayList<ChatMarkdownParser.Message>()
-
-        var role: ChatMarkdownParser.Role? = null
-        var inFence = false
-        var fenceMarker = ""
-        val fence = StringBuilder()
         val parts = ArrayList<ChatMarkdownParser.Block>()
+        val prose = ArrayList<String>()
+        val tool = ArrayList<String>()
         var toolName: String? = null
-        val tool = StringBuilder()
+        var role: String? = null
+        var index = start
 
-        fun endTool() {
-            val name = toolName ?: return
-            val detail = tool.toString().trim()
-            if (detail.isNotEmpty()) parts.add(ChatMarkdownParser.Block("tool", detail, name))
-            toolName = null
-            tool.setLength(0)
+        fun flushProse() {
+            val text = ChatMarkdownParser.trimBlankLines(prose)
+            if (text.isNotEmpty()) parts.add(ChatMarkdownParser.Block("text", text))
+            prose.clear()
         }
-
+        fun endTool() {
+            toolName?.let { parts.add(ChatMarkdownParser.Block("tool", ChatMarkdownParser.trimBlankLines(tool), it)) }
+            tool.clear()
+            toolName = null
+        }
         fun endTurn() {
-            if (role == null) return
+            flushProse()
             endTool()
-            val body = parts.filter { it.kind == "text" }.joinToString("\n\n") { it.text }
-            if (body.isNotEmpty() || parts.isNotEmpty()) {
-                messages.add(ChatMarkdownParser.Message(role!!, body, null, emptyList(), parts.toList()))
+            if (role != null && role != "system" && parts.isNotEmpty()) {
+                messages.add(ChatMarkdownParser.message(
+                    if (role == "user") ChatMarkdownParser.Role.USER else ChatMarkdownParser.Role.ASSISTANT,
+                    parts.toList()
+                ))
             }
-            role = null
             parts.clear()
         }
 
-        for (raw in content.lines()) {
+        while (index < lines.size) {
+            val raw = lines[index]
             val trimmed = raw.trim()
-
-            if (title == null && trimmed.startsWith("# ")) {
-                title = trimmed.removePrefix("#").trim().ifBlank { null }
-            }
-
-            if (!inFence && roleRegex.matches(trimmed)) {
+            val roleHeader = header(raw)
+            if (roleHeader != null) {
                 endTurn()
-                role = when (roleRegex.matchEntire(trimmed)!!.groupValues[1]) {
-                    "user" -> ChatMarkdownParser.Role.USER
-                    "assistant" -> ChatMarkdownParser.Role.ASSISTANT
-                    else -> null
-                }
+                role = roleHeader.groupValues[1]
+                index++
                 continue
             }
-
-            if (role == null) continue
-
-            if (inFence) {
-                if (trimmed.startsWith(fenceMarker)) {
-                    inFence = false
-                    val text = fence.toString().trim()
-                    if (text.isNotEmpty()) parts.add(ChatMarkdownParser.Block("text", text))
-                    fence.setLength(0)
-                } else {
-                    fence.append(raw).append('\n')
-                }
-                continue
-            }
-
-            val fenceMatch = fenceRegex.matchEntire(trimmed)
-            if (fenceMatch != null) {
+            if (MarkdownFenceScanner.opening(raw) != null) {
+                flushProse()
                 endTool()
-                inFence = true
-                fenceMarker = fenceMatch.groupValues[1].take(3)
+                val end = MarkdownFenceScanner.end(lines, index)
+                // An incomplete body stays readable with its original delimiter.
+                val body = if (end == null) lines.subList(index, lines.size) else lines.subList(index + 1, end - 1)
+                val text = ChatMarkdownParser.trimBlankLines(body)
+                if (text.isNotEmpty()) parts.add(ChatMarkdownParser.Block("text", text))
+                index = end ?: lines.size
                 continue
             }
-
-            val toolMatch = toolCallRegex.matchEntire(trimmed)
-            if (toolMatch != null && role == ChatMarkdownParser.Role.ASSISTANT) {
+            // The known footer is outside all body fences and follows a long rule.
+            if (trimmed.matches(Regex("-{10,}"))) {
+                val next = nextNonblank(lines, index + 1)
+                if (lines.getOrNull(next)?.contains("<a href=\"https://chatboxai.app") == true) break
+            }
+            val call = if (raw.startsWith("    ") || raw.startsWith('\t')) null else toolCallRegex.matchEntire(trimmed)
+            if (call != null && role == "assistant") {
+                flushProse()
                 endTool()
-                toolName = toolMatch.groupValues[1]
-                continue
+                toolName = call.groupValues[1]
+            } else if (toolName != null) {
+                tool.add(raw)
+            } else if (role != null) {
+                prose.add(raw)
             }
-
-            if (toolName != null) tool.append(raw).append('\n')
-        }
-        if (inFence) {
-            val text = fence.toString().trim()
-            if (text.isNotEmpty()) parts.add(ChatMarkdownParser.Block("text", text))
+            index++
         }
         endTurn()
-
-        return ChatMarkdownParser.Result(title, messages)
+        return if (messages.isEmpty()) ChatMarkdownParser.document(content) else ChatMarkdownParser.Result(title, messages)
     }
 
-    /** The index of the fence that opens the body after a role label, if there is one. */
-    private fun fenceAfter(lines: List<String>, roleIndex: Int): Int? {
-        var index = roleIndex + 1
+    private fun nextNonblank(lines: List<String>, from: Int): Int {
+        var index = from
         while (index < lines.size && lines[index].isBlank()) index++
-        if (index >= lines.size || !fenceRegex.matches(lines[index].trim())) return null
         return index
     }
 }

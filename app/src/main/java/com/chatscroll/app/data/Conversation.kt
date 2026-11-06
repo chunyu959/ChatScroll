@@ -2,10 +2,9 @@ package com.chatscroll.app.data
 
 import android.content.Context
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.io.File
-import java.security.MessageDigest
+import java.io.InputStream
+import java.io.OutputStream
 import java.util.UUID
 
 @Serializable
@@ -17,33 +16,16 @@ data class MessageBlock(
 
 @Serializable
 data class ChatMessage(
-    val role: String,   // "user" | "assistant"
+    val role: String,
     val content: String,
     val thinking: String? = null,
-    // Who wrote the message and when, when the export recorded both. Empty for
-    // conversations imported before this was kept, and for exports with no names.
     val speaker: String? = null,
     val time: String? = null,
-    // The reply in the order it was written: prose, a tool call, more prose.
-    // "text" blocks are the visible reply; the rest fold away. Empty for
-    // conversations imported before this was recorded; those still use [thinking]
-    // and [content].
     val blocks: List<MessageBlock> = emptyList(),
-    // Embedded images, kept apart from the text so a single screenshot does not
-    // turn the message into half a million characters of layout. Empty for
-    // conversations imported before images were split out.
+    // Imports use data URIs; the repository returns app-private file URIs.
     val images: List<String> = emptyList()
 )
 
-/**
- * Full conversation, including message bodies.
- *
- * [contentHash] is a fingerprint of the messages only (never the title), so two
- * files that say exactly the same thing can be recognized even when their names
- * differ. [seen] is false until the conversation has been opened once.
- * [pinnedAt] remembers when it was pinned, so the most recently pinned one
- * stays on top.
- */
 @Serializable
 data class Conversation(
     val id: String = UUID.randomUUID().toString(),
@@ -53,21 +35,19 @@ data class Conversation(
     val pinnedAt: Long? = null,
     val seen: Boolean = true,
     val contentHash: String = "",
-    // Which message was at the top of the screen when reading stopped, and how many
-    // pixels into that message. Both are known exactly, unlike a pixel distance,
-    // which has to guess the height of messages that are not on screen. Null until
-    // the conversation has been opened from the list once, so a fresh import always
-    // starts at the top.
     val scrollIndex: Int? = null,
     val scrollOffset: Int? = null,
-    val messages: List<ChatMessage>
+    val messages: List<ChatMessage>,
+    val sourceFormat: String = "auto",
+    val parserVersion: Int = 1,
+    val hasSource: Boolean = false,
+    val bookmarks: List<Int> = emptyList(),
+    val scrollBlock: Int = 0,
+    val folderId: String? = null,
+    /** UTF-8 bytes of the original import source; null when the size is unknown. */
+    val sourceSizeBytes: Long? = null
 )
 
-/**
- * The lightweight record shown in the list. Message bodies (which can hold
- * large images) live in a separate file and are only read when a conversation
- * is opened.
- */
 @Serializable
 data class ConversationSummary(
     val id: String,
@@ -79,174 +59,129 @@ data class ConversationSummary(
     val contentHash: String = "",
     val messageCount: Int = 0,
     val scrollIndex: Int? = null,
-    val scrollOffset: Int? = null
+    val scrollOffset: Int? = null,
+    val sourceFormat: String = "auto",
+    val parserVersion: Int = 1,
+    val hasSource: Boolean = false,
+    val bookmarks: List<Int> = emptyList(),
+    val scrollBlock: Int = 0,
+    val folderId: String? = null,
+    /** UTF-8 bytes of the original import source; null when the size is unknown. */
+    val sourceSizeBytes: Long? = null
 )
 
-/** One conversation a search matched, with a short quote from its text when it matched there. */
+@Serializable
+data class ConversationFolder(val id: String, val name: String, val createdAt: Long)
+
 data class SearchHit(
     val summary: ConversationSummary,
-    val snippet: String?
+    val snippet: String?,
+    val messageIndex: Int? = null
 )
 
-/**
- * File storage inside the app-private directory. Each conversation is a pair of
- * JSON files: `<id>.meta.json` for the list, `<id>.json` for the full body.
- * Fully offline, no external dependencies.
- *
- * Files written by version 1.0.0 contain the whole conversation in `<id>.json`
- * and have no meta file; they are split apart the first time the list is read.
- */
-object ConversationStore {
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-        prettyPrint = false
-    }
-
-    private fun dir(context: Context): File =
-        File(context.filesDir, "conversations").apply { mkdirs() }
-
-    /** Summaries for the list: pinned first (newest pin on top), then by import time. */
-    fun list(context: Context): List<ConversationSummary> {
-        migrateLegacy(context)
-        return dir(context).listFiles { f -> f.isFile && f.name.endsWith(".meta.json") }
-            ?.mapNotNull { file ->
-                runCatching { json.decodeFromString<ConversationSummary>(file.readText()) }.getOrNull()
-            }
-            ?.sortedWith(
-                compareByDescending<ConversationSummary> { it.pinned }
-                    .thenByDescending { it.pinnedAt ?: 0L }
-                    .thenByDescending { it.importedAt }
-            )
-            ?: emptyList()
-    }
-
-    /** Reads one full conversation. Returns null when the file is missing or unreadable. */
-    fun load(context: Context, id: String): Conversation? =
-        runCatching {
-            json.decodeFromString<Conversation>(File(dir(context), "$id.json").readText())
-        }.getOrNull()
-
-    /**
-     * Finds a conversation whose messages are byte-for-byte the same.
-     * Titles are ignored on purpose: same name does not mean same chat.
-     */
-    fun findDuplicate(context: Context, contentHash: String): ConversationSummary? {
-        if (contentHash.isEmpty()) return null
-        migrateLegacy(context)
-        return dir(context).listFiles { f -> f.isFile && f.name.endsWith(".meta.json") }
-            ?.firstNotNullOfOrNull { file ->
-                runCatching { json.decodeFromString<ConversationSummary>(file.readText()) }
-                    .getOrNull()
-                    ?.takeIf { it.contentHash == contentHash }
-            }
-    }
-
-    fun save(context: Context, conversation: Conversation) {
-        val hash = conversation.contentHash.ifEmpty { contentHash(conversation.messages) }
-        val stored = conversation.copy(contentHash = hash)
-        val folder = dir(context)
-        File(folder, stored.id + ".json").writeText(json.encodeToString(stored))
-        File(folder, stored.id + ".meta.json").writeText(json.encodeToString(stored.toSummary()))
-    }
-
-    /** Updates list-visible fields without rewriting the (potentially large) body file. */
-    fun updateSummary(context: Context, summary: ConversationSummary) {
-        File(dir(context), summary.id + ".meta.json")
-            .writeText(json.encodeToString(summary))
-    }
-
-    fun delete(context: Context, id: String) {
-        val folder = dir(context)
-        File(folder, "$id.json").delete()
-        File(folder, "$id.meta.json").delete()
-    }
-
-    /**
-     * Conversations whose title or message text contains [query], read one file at a
-     * time so a long list is never held in memory all at once.
-     *
-     * Only the visible text counts: the title and what was said. Folded reasoning and
-     * tool calls are skipped, since a match inside them could not be shown.
-     */
-    fun search(context: Context, query: String): List<SearchHit> {
-        val needle = query.trim()
-        if (needle.isEmpty()) return emptyList()
-        migrateLegacy(context)
-        val hits = ArrayList<SearchHit>()
-        dir(context).listFiles { f -> f.isFile && f.name.endsWith(".meta.json") }
-            ?.forEach { file ->
-                val summary = runCatching {
-                    json.decodeFromString<ConversationSummary>(file.readText())
-                }.getOrNull() ?: return@forEach
-                val titleMatch = summary.title.contains(needle, ignoreCase = true)
-                val conversation = load(context, summary.id) ?: return@forEach
-                val snippet = conversation.messages.firstNotNullOfOrNull { message ->
-                    excerpt(message.content, needle)
-                }
-                if (titleMatch || snippet != null) {
-                    hits.add(SearchHit(summary, snippet))
-                }
-            }
-        return hits.sortedWith(
-            compareByDescending<SearchHit> { it.summary.pinned }
-                .thenByDescending { it.summary.pinnedAt ?: 0L }
-                .thenByDescending { it.summary.importedAt }
-        )
-    }
-
-    /** A short window of [content] around the first match of [needle], or null. */
-    internal fun excerpt(content: String, needle: String): String? {
-        val at = content.indexOf(needle, ignoreCase = true)
-        if (at < 0) return null
-        val start = (at - 20).coerceAtLeast(0)
-        val end = (at + needle.length + 20).coerceAtMost(content.length)
-        val core = content.substring(start, end).replace('\n', ' ').trim()
-        return (if (start > 0) "…" else "") + core + (if (end < content.length) "…" else "")
-    }
-
-    /** Fingerprint of the messages. The title is deliberately not part of it. */
-    fun contentHash(messages: List<ChatMessage>): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        messages.forEach { message ->
-            digest.update(message.role.toByteArray(Charsets.UTF_8))
-            digest.update(0)
-            digest.update(message.content.toByteArray(Charsets.UTF_8))
-            digest.update(0)
-            message.thinking?.let { digest.update(it.toByteArray(Charsets.UTF_8)) }
-            digest.update(0)
-        }
-        return digest.digest().joinToString("") { "%02x".format(it) }
-    }
-
-    /**
-     * Version 1.0.0 stored everything in `<id>.json`. Split those into a meta
-     * file plus a body file so the list no longer has to read every message.
-     */
-    private fun migrateLegacy(context: Context) {
-        val folder = dir(context)
-        folder.listFiles { f -> f.isFile && f.name.endsWith(".json") && !f.name.endsWith(".meta.json") }
-            ?.forEach { file ->
-                val meta = File(folder, file.nameWithoutExtension + ".meta.json")
-                if (meta.exists()) return@forEach
-                val conversation = runCatching {
-                    json.decodeFromString<Conversation>(file.readText())
-                }.getOrNull() ?: return@forEach
-                save(context, conversation)
-            }
-    }
+/** A validated retained revision. The token is opaque and must be returned unchanged on confirmation. */
+data class HistoryPreview(
+    val title: String,
+    val messageCount: Int,
+    val parserVersion: Int,
+    val sourceFormat: String,
+    val token: String
+) {
+    val fingerprint: String get() = token
 }
 
-private fun Conversation.toSummary() = ConversationSummary(
-    id = id,
-    title = title,
-    importedAt = importedAt,
-    pinned = pinned,
-    pinnedAt = pinnedAt,
-    seen = seen,
-    contentHash = contentHash,
-    messageCount = messages.size,
-    scrollIndex = scrollIndex,
-    scrollOffset = scrollOffset
+/** Categories are disjoint; atomic backups belong to the same category as their primary. */
+data class StorageUsage(
+    val currentBytes: Long = 0,
+    val sourceBytes: Long = 0,
+    val assetsBytes: Long = 0,
+    val historyBytes: Long = 0,
+    val indexBytes: Long = 0,
+    val otherBytes: Long = 0
+) {
+    val totalBytes: Long get() = currentBytes + sourceBytes + assetsBytes + historyBytes + indexBytes + otherBytes
+}
+
+/** Only verified older history is eligible. Assets and unrecognized files are always retained. */
+data class CleanupPreview(
+    val token: String,
+    val revisionCount: Int,
+    val fileCount: Int,
+    val bytes: Long,
+    val protectedRevisionCount: Int,
+    val skippedRecordCount: Int,
+    val unknownFileCount: Int,
+    val warnings: List<String>
+)
+
+data class CleanupResult(
+    val deletedRevisionCount: Int,
+    val deletedFileCount: Int,
+    val freedBytes: Long,
+    val warnings: List<String>
+)
+
+/** Synchronous, app-private storage. Call from an IO dispatcher, not the UI thread. */
+object ConversationStore {
+    private fun repository(context: Context) =
+        FileConversationRepository(File(context.filesDir, "conversations"))
+
+    fun list(context: Context): List<ConversationSummary> = repository(context).list()
+    fun folders(context: Context): List<ConversationFolder> = repository(context).folders()
+    fun createFolder(context: Context, name: String): ConversationFolder = repository(context).createFolder(name)
+    fun renameFolder(context: Context, id: String, name: String): Unit = repository(context).renameFolder(id, name)
+    fun deleteFolder(context: Context, id: String): Unit = repository(context).deleteFolder(id)
+    fun moveToFolder(context: Context, ids: List<String>, folderId: String?): Unit =
+        repository(context).moveToFolder(ids, folderId)
+    /** IDs of unreadable records; healthy records remain available through list/search. */
+    fun issues(context: Context): List<String> = repository(context).issues()
+    fun load(context: Context, id: String): Conversation? = repository(context).load(id)
+    fun setSeen(context: Context, id: String, seen: Boolean = true): ConversationSummary? =
+        repository(context).setSeen(id, seen)
+    fun rename(context: Context, id: String, title: String): ConversationSummary? =
+        repository(context).rename(id, title)
+    fun setPinned(context: Context, id: String, pinned: Boolean): ConversationSummary? =
+        repository(context).setPinned(id, pinned)
+    fun findDuplicate(context: Context, contentHash: String): ConversationSummary? =
+        repository(context).findDuplicate(contentHash)
+
+    fun save(context: Context, conversation: Conversation, source: String? = null) =
+        repository(context).save(conversation, source)
+
+    fun updateSummary(context: Context, summary: ConversationSummary) =
+        repository(context).updateSummary(summary)
+
+    fun updatePosition(context: Context, id: String, index: Int, offset: Int, blockIndex: Int = 0): ConversationSummary? =
+        repository(context).updatePosition(id, index, offset, blockIndex)
+
+    fun toggleBookmark(context: Context, id: String, messageIndex: Int): ConversationSummary? =
+        repository(context).toggleBookmark(id, messageIndex)
+
+    /** Null means there is no retained previous revision; damaged history raises an IOException. */
+    fun historyPreview(context: Context, id: String): HistoryPreview? = repository(context).historyPreview(id)
+    fun restorePrevious(context: Context, id: String, expectedToken: String): Conversation? =
+        repository(context).restorePrevious(id, expectedToken)
+    fun storageUsage(context: Context): StorageUsage = repository(context).storageUsage()
+    fun cleanupPreview(context: Context): CleanupPreview = repository(context).cleanupPreview()
+    fun cleanStorage(context: Context, previewToken: String): CleanupResult = repository(context).cleanStorage(previewToken)
+
+    fun readSource(context: Context, id: String): String? = repository(context).readSource(id)
+    fun delete(context: Context, id: String) = repository(context).delete(id)
+
+    /** Supply { coroutineContext.ensureActive() } using a captured coroutine context. */
+    fun search(context: Context, query: String, cancellationCheck: () -> Unit = {}): List<SearchHit> =
+        repository(context).search(query, cancellationCheck)
+
+    fun contentHash(messages: List<ChatMessage>): String = ConversationFingerprint.hash(messages)
+    internal fun excerpt(content: String, needle: String): String? = searchExcerpt(content, needle)
+    fun exportBackup(context: Context, output: OutputStream): Int = repository(context).exportBackup(output)
+    fun restoreBackup(context: Context, input: InputStream): Int = repository(context).restoreBackup(input)
+}
+
+fun Conversation.toSummary() = ConversationSummary(
+    id = id, title = title, importedAt = importedAt, pinned = pinned, pinnedAt = pinnedAt,
+    seen = seen, contentHash = contentHash, messageCount = messages.size,
+    scrollIndex = scrollIndex, scrollOffset = scrollOffset, sourceFormat = sourceFormat,
+    parserVersion = parserVersion, hasSource = hasSource, bookmarks = bookmarks, scrollBlock = scrollBlock,
+    folderId = folderId, sourceSizeBytes = sourceSizeBytes
 )

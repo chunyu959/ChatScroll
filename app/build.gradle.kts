@@ -25,8 +25,9 @@ android {
         applicationId = "com.chatscroll.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.3.0"
+        versionCode = 12
+        versionName = "1.9.0"
+        testInstrumentationRunner = "com.chatscroll.app.RenderingRegressionInstrumentation"
     }
 
     signingConfigs {
@@ -93,6 +94,15 @@ dependencies {
     kapt("io.noties:prism4j-bundler:2.0.0")
 
     testImplementation("junit:junit:4.13.2")
+}
+
+// Private export files stay outside the repository. Opt in explicitly for local checks.
+tasks.withType<Test>().configureEach {
+    providers.gradleProperty("chatscrollCorpusDir").orNull?.let {
+        systemProperty("chatscroll.corpusDir", it)
+        inputs.dir(it).withPropertyName("privateExportCorpus")
+    }
+    testLogging { events("failed", "skipped") }
 }
 
 // jlatexmath/prism4j pull the legacy JetBrains annotations artifact which

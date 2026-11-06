@@ -34,18 +34,31 @@ package com.chatscroll.app.parser
  */
 object KelivoParser {
 
-    private val headerRegex = Regex("^>\\s*(.+?)\\s*[·•]\\s*(.+?)\\s*$")
+    // The time has to be there. A quoted sentence that merely happens to contain a
+    // middle dot, such as a line of dialogue inside some other export, is not a turn.
+    private val headerRegex = Regex(
+        "^>\\s*((?:\\d{4}年\\d{1,2}月\\d{1,2}日|\\d{4}[-/]\\d{1,2}[-/]\\d{1,2})\\s+\\d{1,2}:\\d{2}(?::\\d{2})?)\\s*[·•]\\s*(.+?)\\s*$"
+    )
     private val thinkingLabel = "**思考内容**"
-    private val fenceRegex = Regex("^\\s*(```+|~~~+).*")
     private val toolHeaderRegex = Regex("^\\[([^\\[\\]]+)]$")
 
-    /** True when the file opens its turns the way a Kelivo export does. */
-    fun isKelivo(content: String): Boolean =
-        content.lineSequence().any { headerRegex.matches(it.trim()) }
+    private fun header(line: String): MatchResult? =
+        if (line.startsWith("    ") || line.startsWith('\t')) null else headerRegex.matchEntire(line.trim())
+
+    /** Recognition is confined to the start, never a quote inside another format. */
+    fun isKelivo(content: String): Boolean {
+        val lines = content.lines()
+        val first = ChatMarkdownParser.firstContentLine(lines)
+        return lines.getOrNull(first)?.let(::header) != null
+    }
 
     fun parse(content: String): ChatMarkdownParser.Result {
-        var title: String? = null
-        var titleSettled = false
+        if (!isKelivo(content)) return ChatMarkdownParser.document(content)
+        val lines = content.lines()
+        val start = ChatMarkdownParser.firstContentLine(lines)
+        val title = lines.take(start).firstOrNull { it.trim().startsWith("# ") }
+            ?.trim()?.removePrefix("# ")?.trim()
+        var fence: MarkdownFenceScanner.Fence? = null
         var role: ChatMarkdownParser.Role? = null
         var speaker: String? = null
         var time: String? = null
@@ -56,20 +69,26 @@ object KelivoParser {
         fun flush() {
             val currentRole = role ?: return
             // The --- between turns is a separator, not part of what was said.
-            val body = buffer.toString().trim().replace(Regex("(?m)\\n+---\\s*$"), "").trim()
+            val body = ChatMarkdownParser.cleanBody(buffer.toString().lines())
             buffer.setLength(0)
             if (body.isEmpty()) return
             turns.add(Turn(currentRole, speaker, time, body))
         }
 
-        for (raw in content.lines()) {
-            if (!titleSettled) {
-                title = raw.removePrefix("#").trim().ifBlank { null }
-                titleSettled = true
+        for (raw in lines.drop(start)) {
+            val active = fence
+            if (active != null) {
+                buffer.append(raw).append('\n')
+                if (active.closes(raw)) fence = null
                 continue
             }
-
-            val header = headerRegex.matchEntire(raw.trim())
+            val opening = MarkdownFenceScanner.opening(raw)
+            if (opening != null) {
+                buffer.append(raw).append('\n')
+                fence = opening
+                continue
+            }
+            val header = header(raw)
             if (header != null) {
                 flush()
                 val name = header.groupValues[2].trim()
@@ -88,22 +107,12 @@ object KelivoParser {
         flush()
 
         val messages = turns.map { turn ->
-            if (turn.role == ChatMarkdownParser.Role.ASSISTANT) {
-                val blocks = segment(turn.body)
-                val text = blocks.filter { it.kind == "text" }.joinToString("\n\n") { it.text }
-                val (body, images) = splitImages(text)
-                ChatMarkdownParser.Message(
-                    turn.role, body, null, images, blocks, turn.speaker, turn.time
-                )
-            } else {
-                val (body, images) = splitImages(turn.body)
-                ChatMarkdownParser.Message(
-                    turn.role, body, null, images, emptyList(), turn.speaker, turn.time
-                )
-            }
+            val blocks = if (turn.role == ChatMarkdownParser.Role.ASSISTANT) segment(turn.body)
+                else listOf(ChatMarkdownParser.Block("text", turn.body))
+            ChatMarkdownParser.message(turn.role, blocks, turn.speaker, turn.time)
         }
 
-        return ChatMarkdownParser.Result(title, messages)
+        return if (messages.isEmpty()) ChatMarkdownParser.document(content) else ChatMarkdownParser.Result(title, messages)
     }
 
     private data class Turn(
@@ -129,28 +138,41 @@ object KelivoParser {
         var index = 0
 
         fun flushProse() {
-            val text = prose.joinToString("\n").trim()
+            val text = ChatMarkdownParser.trimBlankLines(prose)
             prose.clear()
             if (text.isNotEmpty()) blocks.add(ChatMarkdownParser.Block("text", text))
         }
 
         while (index < lines.size) {
-            if (lines[index].trim() == thinkingLabel) {
-                flushProse()
-                val (next, text) = readThinking(lines, index + 1)
-                if (text.isNotEmpty()) blocks.add(ChatMarkdownParser.Block("thinking", text))
-                index = next
+            if (MarkdownFenceScanner.opening(lines[index]) != null) {
+                val end = MarkdownFenceScanner.end(lines, index) ?: lines.size
+                prose.addAll(lines.subList(index, end))
+                index = end
                 continue
             }
+            if (!isIndented(lines[index]) && lines[index].trim() == thinkingLabel) {
+                val thought = readThinking(lines, index + 1)
+                if (thought != null) {
+                    flushProse()
+                    if (thought.second.isNotEmpty()) blocks.add(ChatMarkdownParser.Block("thinking", thought.second))
+                    index = thought.first
+                    continue
+                }
+            }
 
-            val tool = toolHeaderRegex.matchEntire(lines[index].trim())
+            val tool = if (isIndented(lines[index])) null else toolHeaderRegex.matchEntire(lines[index].trim())
             if (tool != null) {
                 flushProse()
                 val start = index + 1
                 index = start
-                while (index < lines.size && !isToolBoundary(lines, index)) index++
-                val detail = lines.subList(start, index).joinToString("\n").trim()
-                blocks.add(ChatMarkdownParser.Block("tool", detail, tool.groupValues[1].trim()))
+                while (index < lines.size && !isToolBoundary(lines, index)) {
+                    if (MarkdownFenceScanner.opening(lines[index]) != null) {
+                        index = MarkdownFenceScanner.end(lines, index) ?: lines.size
+                    } else index++
+                }
+                val detail = ChatMarkdownParser.trimBlankLines(lines.subList(start, index))
+                if (detail.isBlank()) prose.addAll(lines.subList(start - 1, index))
+                else blocks.add(ChatMarkdownParser.Block("tool", detail, tool.groupValues[1].trim()))
                 continue
             }
 
@@ -163,21 +185,11 @@ object KelivoParser {
     }
 
     /** The fenced block after a thinking label, and where to resume after it. */
-    private fun readThinking(lines: List<String>, from: Int): Pair<Int, String> {
+    private fun readThinking(lines: List<String>, from: Int): Pair<Int, String>? {
         var index = from
         while (index < lines.size && lines[index].isBlank()) index++
-        if (index >= lines.size) return index to ""
-
-        val fence = fenceRegex.matchEntire(lines[index].trim()) ?: return index to ""
-        val marker = fence.groupValues[1].take(3)
-        index++
-        val collected = ArrayList<String>()
-        while (index < lines.size && !lines[index].trim().startsWith(marker)) {
-            collected.add(lines[index])
-            index++
-        }
-        if (index < lines.size) index++
-        return index to collected.joinToString("\n").trim()
+        val end = MarkdownFenceScanner.end(lines, index) ?: return null
+        return end to ChatMarkdownParser.trimBlankLines(lines.subList(index + 1, end - 1))
     }
 
     /**
@@ -186,7 +198,10 @@ object KelivoParser {
      * alone is not the end: the line has to read as a sentence. Markup such as a
      * link, a heading or a bare date stays inside the tool.
      */
+    private fun isIndented(line: String): Boolean = line.startsWith("    ") || line.startsWith('\t')
+
     private fun isToolBoundary(lines: List<String>, index: Int): Boolean {
+        if (isIndented(lines[index])) return false
         val trimmed = lines[index].trim()
         if (trimmed == thinkingLabel) return true
         if (toolHeaderRegex.matches(trimmed)) return true
@@ -205,20 +220,4 @@ object KelivoParser {
         return "$month-$day ${match.groupValues[3]}"
     }
 
-    /** Lifts embedded images out of the text, leaving a short marker behind. */
-    private fun splitImages(content: String): Pair<String, List<String>> {
-        if (!content.contains("![")) return content to emptyList()
-        val images = ArrayList<String>()
-        val text = Regex("!\\[([^\\]]*)\\]\\(([^)]*)\\)", RegexOption.DOT_MATCHES_ALL)
-            .replace(content) { match ->
-                val url = match.groupValues[2].trim()
-                if (url.startsWith("data:", ignoreCase = true)) {
-                    images.add(url)
-                    "\n\n[image:${images.size - 1}]\n\n"
-                } else {
-                    match.value
-                }
-            }
-        return text.trim() to images
-    }
 }

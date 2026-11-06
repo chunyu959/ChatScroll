@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="library_sort_newest">最新优先</string>
+    <string name="library_sort_oldest">最早优先</string>
+    <string name="library_sort_name_asc">名称 A–Z</string>
+    <string name="library_sort_name_desc">名称 Z–A</string>
+    <string name="library_sort_largest">大文件优先</string>
+    <string name="library_sort_smallest">小文件优先</string>
+    <string name="library_original_size">原始 %1$s</string>
+    <string name="library_original_size_unknown">大小未知</string>
+</resources>

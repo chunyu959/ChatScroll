@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="organization_all">全部会话</string>
+    <string name="organization_unfiled">未分类</string>
+    <string name="organization_folder_filter">文件夹：%1$s</string>
+    <string name="organization_manage_folders">管理文件夹</string>
+    <string name="organization_no_folders">还没有文件夹。创建文件夹来整理会话。</string>
+    <string name="organization_create_folder">创建文件夹</string>
+    <string name="organization_rename_folder">重命名文件夹</string>
+    <string name="organization_rename_named_folder">重命名“%1$s”</string>
+    <string name="organization_delete_named_folder">删除“%1$s”</string>
+    <string name="organization_folder_name">文件夹名称</string>
+    <string name="organization_folder_name_hint">请输入 1–60 个字符。</string>
+    <string name="organization_folder_name_too_long">名称不能超过 60 个字符。</string>
+    <string name="organization_delete_folder_title">删除文件夹？</string>
+    <string name="organization_delete_folder_message">要删除“%1$s”吗？其中的会话将移回“未分类”，会话及其内容都会保留。</string>
+    <string name="organization_done">完成</string>
+    <string name="organization_sort">排序：%1$s</string>
+    <string name="organization_sort_time_desc">时间：从新到旧</string>
+    <string name="organization_sort_time_asc">时间：从旧到新</string>
+    <string name="organization_sort_name_asc">名称：A → Z</string>
+    <string name="organization_sort_name_desc">名称：Z → A</string>
+    <string name="organization_sort_size_desc">原始文件：从大到小</string>
+    <string name="organization_sort_size_asc">原始文件：从小到大</string>
+    <string name="organization_search_scope">搜索范围：%1$s</string>
+    <string name="organization_move">移至文件夹</string>
+    <string name="organization_move_selected">将所选会话移至文件夹</string>
+    <string name="organization_move_description">选择这些会话的目标文件夹。</string>
+    <string name="organization_move_confirm">移动</string>
+    <string name="organization_original_size">原始文件：%1$s</string>
+    <string name="organization_original_size_unknown">原始文件大小未知</string>
+    <string name="organization_folder_empty_title">此处暂无会话</string>
+    <string name="organization_folder_empty_subtitle">选择“全部会话”可查看其他文件夹中的会话。</string>
+    <string name="organization_invalid_folder">文件夹名称须为1至60字且不重名，目标文件夹须仍存在。请刷新后重试。</string>
+</resources>

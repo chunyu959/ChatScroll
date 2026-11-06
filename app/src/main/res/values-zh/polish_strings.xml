@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="polish_pure_mode">纯阅读模式</string>
+    <string name="polish_pure_mode_detail">隐藏带编号的消息操作栏。通过紧凑菜单或长按操作，已有书签仍可见。</string>
+    <string name="polish_storage_title">存储空间管理</string>
+    <string name="polish_storage_intro">先查看本地占用，再选择是否清理较早的解析历史。</string>
+    <string name="polish_storage_open">查看占用和清理预览</string>
+    <string name="polish_storage_current">当前对话数据</string>
+    <string name="polish_storage_source">当前原始文件</string>
+    <string name="polish_storage_images">图片文件</string>
+    <string name="polish_storage_history">历史和恢复数据</string>
+    <string name="polish_storage_indexes">搜索索引</string>
+    <string name="polish_storage_other">元数据及其他文件</string>
+    <string name="polish_storage_total">总计</string>
+    <string name="polish_storage_refresh">刷新占用和预览</string>
+    <string name="polish_cleanup_title">清理较早历史</string>
+    <string name="polish_cleanup_safety">保留当前内容、最近可恢复版本、全部图片和未知文件。只清理已验证、没有被恢复数据引用的更早版本文件。</string>
+    <string name="polish_cleanup_preview">可清理 %1$d 个较早版本、%2$d 个文件，共 %3$s。</string>
+    <string name="polish_cleanup_protected">受保护的版本引用：%1$d 个。</string>
+    <string name="polish_cleanup_skipped">已跳过 %1$d 条有不确定情况的记录，并保留 %2$d 个未知文件。</string>
+    <string name="polish_cleanup_action">清理较早历史</string>
+    <string name="polish_cleanup_none">目前没有可安全清理的较早历史。</string>
+    <string name="polish_cleanup_confirm">永久删除 %1$d 个较早版本（%2$s）？当前内容和最近可恢复版本会保留，删除前将再次核对预览。</string>
+    <string name="polish_cleanup_done">已清理 %1$d 个文件，释放 %2$s。</string>
+    <string name="polish_history_title">恢复上次解析结果</string>
+    <string name="polish_history_preview">%1$d 条消息 · 解析器版本 %2$d · 格式 %3$s</string>
+    <string name="polish_history_notice">恢复这个已保存版本。保留现在的标题和置顶，当前版本会成为可恢复的上一版。只有能安全匹配的消息才保留书签和阅读位置。</string>
+    <string name="polish_history_restore">恢复此版本</string>
+    <string name="polish_history_none">这条对话还没有可恢复的上次解析结果。</string>
+    <string name="polish_history_done">已恢复上次解析结果。</string>
+    <string name="polish_preview_stale">预览后数据发生了变化，本次操作没有修改数据。请刷新预览后重试。</string>
+</resources>

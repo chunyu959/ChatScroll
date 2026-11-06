@@ -9,7 +9,6 @@ import androidx.activity.enableEdgeToEdge
 import com.chatscroll.app.ui.AppState
 import com.chatscroll.app.ui.ImportPayload
 import com.chatscroll.app.ui.Root
-import com.chatscroll.app.ui.theme.ChatScrollTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -17,11 +16,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         pushImportIntent(intent)
-        setContent {
-            ChatScrollTheme {
-                Root()
-            }
-        }
+        setContent { Root() }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -38,7 +33,7 @@ class MainActivity : ComponentActivity() {
         val payload = stream?.let { ImportPayload.FileUri(it) }
             ?: intent.getStringExtra(Intent.EXTRA_TEXT)?.let { ImportPayload.RawText(it) }
         if (payload != null) {
-            AppState.pendingImport.value = payload
+            AppState.enqueue(applicationContext, payload)
             // The same intent is delivered again on the next onCreate (rotation,
             // process restore). Clear it so one share cannot import twice.
             intent.removeExtra(Intent.EXTRA_STREAM)
